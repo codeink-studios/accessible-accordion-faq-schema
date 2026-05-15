@@ -4,7 +4,7 @@ Tags: faq, accordion, schema, gutenberg, accessibility
 Requires at least: 6.3
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -98,10 +98,17 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 
 == Changelog ==
 
+= 1.0.1 =
+* Removed the question's bottom border when its answer is expanded, so an open item reads as one continuous block.
+* Added a subtle 180ms fade + slide reveal animation when an answer expands. Gated behind `prefers-reduced-motion: no-preference` — users with motion-sensitivity preferences get the instant default.
+
 = 1.0.0 =
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.1 =
+Visual polish: cleaner open state and an opt-out-respecting expand animation.
 
 = 1.0.0 =
 Initial release.
