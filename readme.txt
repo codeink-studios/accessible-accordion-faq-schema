@@ -4,7 +4,7 @@ Tags: faq, accordion, schema, gutenberg, accessibility
 Requires at least: 6.3
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 2.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -98,6 +98,12 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 
 == Changelog ==
 
+= 2.0.0 =
+* **Breaking change in the editor.** Answers now use native WordPress block editing — press Enter for a new paragraph, Shift+Enter for a line break, Cmd/Ctrl+K for a link. Lists, headings, blockquotes, and code blocks are all supported inside answers via the standard block inserter.
+* Architecture: the block is now split into a parent (Accessible FAQ Accordion) and a child (FAQ Item). Each child holds its question as a string and its answer as nested blocks.
+* Existing v1.x FAQ blocks will not be editable in the new UI and will render empty on the frontend. Delete and re-create any FAQ blocks created in v1.x. No sites were known to be using v1.x in production at the time of this release.
+* Drag-and-drop reordering and the standard add/move/delete block controls now apply to FAQ items via the WordPress block toolbar.
+
 = 1.1.1 =
 * Fixed: HTML anchor (and default `#faq`) not appearing in the wrapper `<div>` on the frontend in some WordPress versions. The wrapper id is now applied deterministically.
 
@@ -114,6 +120,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 * Initial release.
 
 == Upgrade Notice ==
+
+= 2.0.0 =
+Major editor refactor: native WordPress block editing inside FAQ answers (Enter = new paragraph, Shift+Enter = line break, lists/headings/links supported). Existing v1.x FAQ blocks must be deleted and re-created.
 
 = 1.1.1 =
 Fixes the wrapper id / HTML anchor not being applied on the frontend.

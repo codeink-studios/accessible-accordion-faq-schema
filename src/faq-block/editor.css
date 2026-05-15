@@ -1,10 +1,15 @@
 /**
  * Accessible FAQ Accordion — editor-only styles.
  *
- * Scoped to .cis_accordion-editor so they never bleed into the frontend.
+ * Scoped to .cis_accordion-editor / .cis_accordion__item-editor so they
+ * never bleed into the frontend.
  *
  * @package CIS_AAFS
  */
+
+/* ---------------------------------------------------------------------------
+ * Parent block wrapper
+ * --------------------------------------------------------------------- */
 
 .cis_accordion-editor {
 	border: 1px dashed rgba(0, 0, 0, 0.15);
@@ -22,74 +27,42 @@
 	opacity: 0.5;
 }
 
+/* ---------------------------------------------------------------------------
+ * Child block (faq-item)
+ * --------------------------------------------------------------------- */
+
 .cis_accordion__item-editor {
-	position: relative;
-	margin: 0 0 1rem;
-	padding: 0.75rem 0.75rem 0.75rem 0.75rem;
 	background: rgba(0, 0, 0, 0.025);
 	border: 1px solid rgba(0, 0, 0, 0.08);
 	border-radius: 4px;
+	padding: 0.75rem;
 }
 
-.cis_accordion__item-editor:last-of-type {
-	margin-bottom: 0.75rem;
-}
-
-.cis_accordion__item-controls {
-	position: absolute;
-	top: 0.4rem;
-	right: 0.4rem;
-	display: flex;
-	gap: 0.15rem;
+.cis_accordion__item-editor + .cis_accordion__item-editor {
+	margin-top: 0.5rem;
 }
 
 .cis_accordion__question-editor {
 	font-weight: 600;
 	min-height: 1.5em;
-	margin: 0 6rem 0.5rem 0; /* leave room for controls */
+	margin: 0 0 0.5rem;
+	padding-bottom: 0.5rem;
+	border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
 }
 
+.cis_accordion__question-editor[data-rich-text-placeholder]::before,
+.cis_accordion__question-editor:empty::before {
+	opacity: 0.5;
+}
+
+/* The answer area wraps WP's InnerBlocks output. We don't style its inner
+ * blocks (paragraphs, lists, headings, quotes) — they use their core block
+ * styles in the editor. We just give the wrapper a small left indent so the
+ * answer reads as visually subordinate to its question. */
 .cis_accordion__answer-editor {
-	min-height: 1.5em;
+	padding-left: 0.25rem;
+}
+
+.cis_accordion__answer-editor .block-editor-block-list__layout {
 	margin: 0;
-	flex: 1 1 auto;
-}
-
-.cis_accordion__paragraph-editor-wrap {
-	display: flex;
-	align-items: flex-start;
-	gap: 0.25rem;
-	margin-bottom: 0.4rem;
-}
-
-.cis_accordion__paragraph-editor-wrap:last-of-type {
-	margin-bottom: 0.25rem;
-}
-
-.cis_accordion__paragraph-remove.components-button {
-	flex-shrink: 0;
-	opacity: 0.45;
-	transition: opacity 100ms ease;
-}
-
-.cis_accordion__paragraph-editor-wrap:hover .cis_accordion__paragraph-remove.components-button,
-.cis_accordion__paragraph-remove.components-button:focus {
-	opacity: 1;
-}
-
-.cis_accordion__add-paragraph.components-button {
-	margin-top: 0;
-	padding: 0;
-	font-size: 11px;
-	min-height: 0;
-	opacity: 0.7;
-}
-
-.cis_accordion__add-paragraph.components-button:hover,
-.cis_accordion__add-paragraph.components-button:focus {
-	opacity: 1;
-}
-
-.cis_accordion__add-button.components-button {
-	margin-top: 0.25rem;
 }

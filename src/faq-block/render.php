@@ -2,14 +2,15 @@
 /**
  * Server-side render for cis/accessible-accordion-faq.
  *
- * All output is sanitized at the point of escaping. JSON-LD schema is built
- * from values that have been through wp_strip_all_tags(), then encoded with
- * JSON_HEX_TAG to prevent any possible </script> breakout.
+ * The body of the <dl> comes from $content (the rendered cis/faq-item
+ * children). Schema is built by walking $block->parsed_block['innerBlocks']
+ * so we can extract plain-text question and answer values.
  *
  * Available variables (provided by WP_Block::render):
  *
  * @var array    $attributes Block attributes.
- * @var string   $content    Saved block content (always empty — dynamic block).
+ * @var string   $content    Rendered inner blocks: a concatenation of
+ *                           cis/faq-item dt/dd pairs.
  * @var WP_Block $block      Block instance.
  *
  * @package CIS_AAFS
@@ -18,7 +19,7 @@
 defined( 'ABSPATH' ) || exit;
 
 // ---------------------------------------------------------------------------
-// 1. Sanitize + validate attributes.
+// 1. Sanitize + validate parent attributes.
 // ---------------------------------------------------------------------------
 
 $cis_aafs_title       = isset( $attributes['title'] ) && is_string( $attributes['title'] )
@@ -34,71 +35,62 @@ $cis_aafs_anchor      = '' !== $cis_aafs_anchor_raw
 	? sanitize_html_class( $cis_aafs_anchor_raw )
 	: 'faq';
 
-// Validate FAQs. Each FAQ must have a question string and an answer that is
-// either a string (legacy v1.0.x format, kept for backward compatibility)
-// or an array of paragraph strings (v1.1.0+ format).
-$cis_aafs_faqs = array();
-if ( isset( $attributes['faqs'] ) && is_array( $attributes['faqs'] ) ) {
-	foreach ( $attributes['faqs'] as $cis_aafs_faq ) {
-		if ( ! is_array( $cis_aafs_faq ) ) {
-			continue;
-		}
+// ---------------------------------------------------------------------------
+// 2. Build FAQPage JSON-LD schema by walking inner block data.
+//
+// Each cis/faq-item child holds its question in attributes and its answer
+// content as inner blocks (paragraphs, lists, etc.). We render those inner
+// blocks separately just to extract plain-text answer for the schema.
+// This is independent of $content (which is the already-rendered HTML).
+// ---------------------------------------------------------------------------
 
-		$cis_aafs_q = isset( $cis_aafs_faq['question'] ) && is_string( $cis_aafs_faq['question'] )
-			? trim( $cis_aafs_faq['question'] )
-			: '';
-		if ( '' === $cis_aafs_q ) {
-			continue;
-		}
+$cis_aafs_schema_items = array();
+$cis_aafs_inner_blocks = isset( $block->parsed_block['innerBlocks'] ) && is_array( $block->parsed_block['innerBlocks'] )
+	? $block->parsed_block['innerBlocks']
+	: array();
 
-		// Normalize answer to array-of-paragraphs form.
-		$cis_aafs_paragraphs = array();
-		if ( isset( $cis_aafs_faq['answer'] ) ) {
-			if ( is_array( $cis_aafs_faq['answer'] ) ) {
-				foreach ( $cis_aafs_faq['answer'] as $cis_aafs_p ) {
-					if ( is_string( $cis_aafs_p ) ) {
-						$cis_aafs_paragraphs[] = $cis_aafs_p;
-					}
-				}
-			} elseif ( is_string( $cis_aafs_faq['answer'] ) ) {
-				// Legacy v1.0.x single-string answer.
-				$cis_aafs_paragraphs[] = $cis_aafs_faq['answer'];
-			}
-		}
-
-		// Trim + drop empty paragraphs.
-		$cis_aafs_paragraphs = array_values( array_filter(
-			array_map( 'trim', $cis_aafs_paragraphs ),
-			static function ( $p ) {
-				return '' !== $p;
-			}
-		) );
-
-		if ( empty( $cis_aafs_paragraphs ) ) {
-			continue;
-		}
-
-		$cis_aafs_faqs[] = array(
-			'question'   => $cis_aafs_q,
-			'paragraphs' => $cis_aafs_paragraphs,
-		);
+foreach ( $cis_aafs_inner_blocks as $cis_aafs_item ) {
+	if ( ! is_array( $cis_aafs_item ) ) {
+		continue;
 	}
+	if ( ! isset( $cis_aafs_item['blockName'] ) || 'cis/faq-item' !== $cis_aafs_item['blockName'] ) {
+		continue;
+	}
+
+	$cis_aafs_q = isset( $cis_aafs_item['attrs']['question'] ) && is_string( $cis_aafs_item['attrs']['question'] )
+		? trim( wp_strip_all_tags( $cis_aafs_item['attrs']['question'] ) )
+		: '';
+
+	// Render the item's inner blocks (paragraphs, lists, …) to extract the
+	// plain-text answer for the schema. render_block() is safe with sub-trees.
+	$cis_aafs_answer_html = '';
+	if ( isset( $cis_aafs_item['innerBlocks'] ) && is_array( $cis_aafs_item['innerBlocks'] ) ) {
+		foreach ( $cis_aafs_item['innerBlocks'] as $cis_aafs_sub ) {
+			if ( is_array( $cis_aafs_sub ) ) {
+				$cis_aafs_answer_html .= render_block( $cis_aafs_sub );
+			}
+		}
+	}
+	$cis_aafs_a_text = trim( wp_strip_all_tags( $cis_aafs_answer_html ) );
+
+	if ( '' === $cis_aafs_q || '' === $cis_aafs_a_text ) {
+		continue;
+	}
+
+	$cis_aafs_schema_items[] = array(
+		'@type'          => 'Question',
+		'name'           => $cis_aafs_q,
+		'acceptedAnswer' => array(
+			'@type' => 'Answer',
+			'text'  => $cis_aafs_a_text,
+		),
+	);
 }
 
-// Nothing to render if there are no complete pairs.
-if ( empty( $cis_aafs_faqs ) ) {
+// Don't render the block at all if it has no complete Q/A pairs.
+if ( empty( $cis_aafs_schema_items ) ) {
 	return '';
 }
-
-// ---------------------------------------------------------------------------
-// 2. Generate stable, collision-resistant ID base for ARIA wiring.
-// ---------------------------------------------------------------------------
-
-$cis_aafs_instance = substr(
-	md5( $cis_aafs_anchor . wp_json_encode( $cis_aafs_faqs ) . (string) $cis_aafs_collapsible ),
-	0,
-	8
-);
 
 // ---------------------------------------------------------------------------
 // 3. Conditionally enqueue the tiny accordion script.
@@ -109,7 +101,8 @@ if ( $cis_aafs_collapsible ) {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Build wrapper attributes (merges in block supports: color, spacing, etc.).
+// 4. Build wrapper attributes (merges in block supports: color, spacing, etc.)
+// then deterministically prepend our id.
 // ---------------------------------------------------------------------------
 
 $cis_aafs_wrapper_classes = 'cis_accordion';
@@ -117,10 +110,6 @@ if ( $cis_aafs_collapsible ) {
 	$cis_aafs_wrapper_classes .= ' cis_accordion--collapsible';
 }
 
-// get_block_wrapper_attributes() merges classes from block supports (color,
-// spacing, align, etc.) but its handling of arbitrary attributes like `id`
-// has been inconsistent across WP versions. We strip any auto-injected id
-// and prepend our own deterministically — anchor field if set, else "faq".
 $cis_aafs_wrapper_attrs = get_block_wrapper_attributes(
 	array(
 		'class' => $cis_aafs_wrapper_classes,
@@ -130,40 +119,15 @@ $cis_aafs_wrapper_attrs = preg_replace( '/\sid="[^"]*"/', '', $cis_aafs_wrapper_
 $cis_aafs_wrapper_attrs = sprintf( 'id="%s" ', esc_attr( $cis_aafs_anchor ) ) . $cis_aafs_wrapper_attrs;
 
 // ---------------------------------------------------------------------------
-// 5. Allowed inline HTML in questions (strict allowlist).
-// ---------------------------------------------------------------------------
-
-$cis_aafs_q_allowed = array(
-	'strong' => array(),
-	'b'      => array(),
-	'em'     => array(),
-	'i'      => array(),
-);
-
-// ---------------------------------------------------------------------------
-// 6. Build FAQPage JSON-LD schema.
+// 5. Encode JSON-LD with JSON_HEX_TAG so the payload can never contain a
+// literal </script> sequence that would break the surrounding script tag.
 // ---------------------------------------------------------------------------
 
 $cis_aafs_schema = array(
 	'@context'   => 'https://schema.org',
 	'@type'      => 'FAQPage',
-	'mainEntity' => array(),
+	'mainEntity' => $cis_aafs_schema_items,
 );
-foreach ( $cis_aafs_faqs as $cis_aafs_faq ) {
-	// Schema fields are plain text. Strip all HTML so search engines see
-	// clean prose. Multiple paragraphs joined with blank lines.
-	$cis_aafs_schema['mainEntity'][] = array(
-		'@type'          => 'Question',
-		'name'           => wp_strip_all_tags( $cis_aafs_faq['question'] ),
-		'acceptedAnswer' => array(
-			'@type' => 'Answer',
-			'text'  => wp_strip_all_tags( implode( "\n\n", $cis_aafs_faq['paragraphs'] ) ),
-		),
-	);
-}
-// JSON_HEX_TAG converts < and > into < / > — guarantees the JSON
-// payload cannot contain a literal </script> that would break out of the
-// surrounding <script> element.
 $cis_aafs_schema_json = wp_json_encode(
 	$cis_aafs_schema,
 	JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
@@ -173,13 +137,10 @@ if ( false === $cis_aafs_schema_json ) {
 }
 
 // ---------------------------------------------------------------------------
-// 7. Render.
-//
-// Note: WP wraps this file in `ob_start(); require $file; return ob_get_clean();`,
-// so we just echo HTML directly — no inner buffering, no return value.
+// 6. Render.
 // ---------------------------------------------------------------------------
 ?>
-<div <?php echo $cis_aafs_wrapper_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_block_wrapper_attributes() returns escaped output. ?>>
+<div <?php echo $cis_aafs_wrapper_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_block_wrapper_attributes() output + our esc_attr'd id prefix. ?>>
 	<?php if ( '' !== $cis_aafs_title ) : ?>
 		<?php
 		printf(
@@ -191,57 +152,8 @@ if ( false === $cis_aafs_schema_json ) {
 	<?php endif; ?>
 
 	<dl class="cis_accordion__list">
-		<?php
-		foreach ( $cis_aafs_faqs as $cis_aafs_index => $cis_aafs_faq ) :
-			$cis_aafs_q_html = wp_kses( $cis_aafs_faq['question'], $cis_aafs_q_allowed );
-
-			// Build the answer HTML: wrap each paragraph in <p> unless it
-			// already starts with a block-level tag (legacy <p>...</p> strings
-			// passed through wp_kses_post stay intact).
-			$cis_aafs_a_parts = array();
-			foreach ( $cis_aafs_faq['paragraphs'] as $cis_aafs_p ) {
-				$cis_aafs_p_html = wp_kses_post( $cis_aafs_p );
-				if ( '' === $cis_aafs_p_html ) {
-					continue;
-				}
-				if ( ! preg_match( '/^\s*<(p|ul|ol|div|blockquote|h[1-6])\b/i', $cis_aafs_p_html ) ) {
-					$cis_aafs_p_html = '<p>' . $cis_aafs_p_html . '</p>';
-				}
-				$cis_aafs_a_parts[] = $cis_aafs_p_html;
-			}
-			$cis_aafs_a_html = implode( "\n", $cis_aafs_a_parts );
-
-			$cis_aafs_q_id = sprintf( 'cis-aafs-%s-%d-q', $cis_aafs_instance, $cis_aafs_index + 1 );
-			$cis_aafs_a_id = sprintf( 'cis-aafs-%s-%d-a', $cis_aafs_instance, $cis_aafs_index + 1 );
-			?>
-			<?php if ( $cis_aafs_collapsible ) : ?>
-				<dt class="cis_accordion__question">
-					<button
-						type="button"
-						class="cis_accordion__trigger"
-						id="<?php echo esc_attr( $cis_aafs_q_id ); ?>"
-						aria-expanded="false"
-						aria-controls="<?php echo esc_attr( $cis_aafs_a_id ); ?>"
-					>
-						<span class="cis_accordion__trigger-text"><?php echo $cis_aafs_q_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses() output above. ?></span>
-					</button>
-				</dt>
-				<dd
-					id="<?php echo esc_attr( $cis_aafs_a_id ); ?>"
-					class="cis_accordion__answer"
-					role="region"
-					aria-labelledby="<?php echo esc_attr( $cis_aafs_q_id ); ?>"
-					hidden
-				>
-					<?php echo $cis_aafs_a_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses_post() output above. ?>
-				</dd>
-			<?php else : ?>
-				<dt class="cis_accordion__question"><?php echo $cis_aafs_q_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses() output above. ?></dt>
-				<dd class="cis_accordion__answer"><?php echo $cis_aafs_a_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses_post() output above. ?></dd>
-			<?php endif; ?>
-		<?php endforeach; ?>
+		<?php echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Rendered cis/faq-item children (escape at their boundaries). ?>
 	</dl>
 
-	<script type="application/ld+json"><?php echo $cis_aafs_schema_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Safe by construction: values stripped of HTML + JSON_HEX_TAG flag prevents </script> breakout. ?></script>
+	<script type="application/ld+json"><?php echo $cis_aafs_schema_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Safe by construction: tag-stripped values + JSON_HEX_TAG flag. ?></script>
 </div>
-

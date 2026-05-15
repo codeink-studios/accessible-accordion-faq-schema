@@ -1,0 +1,26 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "cis/faq-item",
+	"version": "2.0.0",
+	"title": "FAQ Item",
+	"description": "A single question and answer pair within an Accessible FAQ Accordion.",
+	"textdomain": "accessible-accordion-faq-schema",
+	"parent": [ "cis/accessible-accordion-faq" ],
+	"supports": {
+		"html": false,
+		"inserter": false,
+		"reusable": false,
+		"lock": false
+	},
+	"attributes": {
+		"question": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"usesContext": [
+		"cis/accessible-accordion-faq/collapsible"
+	],
+	"render": "file:./render.php"
+}

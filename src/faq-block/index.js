@@ -1,8 +1,13 @@
 /**
- * Accessible FAQ Accordion block.
+ * Accessible FAQ Accordion — block editor registration.
  *
- * No-build (no JSX) implementation using wp.element.createElement directly.
- * Keeps the plugin install-and-go for end users without a build step.
+ * Registers two blocks:
+ *   - cis/accessible-accordion-faq (parent) — wrapper, title, schema. Hosts
+ *     cis/faq-item children via InnerBlocks.
+ *   - cis/faq-item (child) — one Q/A pair. Question is a RichText. Answer
+ *     is its own InnerBlocks scoped to text-type core blocks.
+ *
+ * No-build implementation using wp.element.createElement directly.
  *
  * @package CIS_AAFS
  */
@@ -13,14 +18,21 @@
 	var registerBlockType = wp.blocks.registerBlockType;
 	var useBlockProps     = wp.blockEditor.useBlockProps;
 	var InspectorControls = wp.blockEditor.InspectorControls;
+	var InnerBlocks       = wp.blockEditor.InnerBlocks;
 	var RichText          = wp.blockEditor.RichText;
 	var PanelBody         = wp.components.PanelBody;
 	var SelectControl     = wp.components.SelectControl;
 	var ToggleControl     = wp.components.ToggleControl;
-	var Button            = wp.components.Button;
 	var el                = wp.element.createElement;
 	var Fragment          = wp.element.Fragment;
 	var __                = wp.i18n.__;
+
+	// -----------------------------------------------------------------------
+	// Parent block: cis/accessible-accordion-faq
+	// -----------------------------------------------------------------------
+
+	var PARENT_ALLOWED  = [ 'cis/faq-item' ];
+	var PARENT_TEMPLATE = [ [ 'cis/faq-item' ] ];
 
 	registerBlockType( 'cis/accessible-accordion-faq', {
 		edit: function ( props ) {
@@ -32,95 +44,12 @@
 			if ( isNaN( titleLevel ) || titleLevel < 2 || titleLevel > 6 ) {
 				titleLevel = 2;
 			}
-			var faqs        = Array.isArray( attributes.faqs ) ? attributes.faqs : [];
 			var collapsible = !! attributes.collapsible;
 
 			var blockProps = useBlockProps( {
 				className: 'cis_accordion-editor' + ( collapsible ? ' is-collapsible' : '' ),
 			} );
 
-			// Always keep at least one (empty) FAQ row in state so the editor is never blank.
-			if ( faqs.length === 0 ) {
-				faqs = [ { question: '', answer: '' } ];
-			}
-
-			// Normalize a FAQ's answer field to an array of paragraph strings.
-			// v1.0.x stored answer as a single string; v1.1.0+ stores it as
-			// an array of paragraph strings. This handles both.
-			function normalizeParagraphs( answer ) {
-				if ( Array.isArray( answer ) ) {
-					return answer.length > 0 ? answer : [ '' ];
-				}
-				if ( typeof answer === 'string' ) {
-					return [ answer ];
-				}
-				return [ '' ];
-			}
-
-			function updateFaq( index, field, value ) {
-				var next = faqs.map( function ( faq, i ) {
-					if ( i !== index ) {
-						return faq;
-					}
-					var updated = {};
-					updated.question = faq.question || '';
-					updated.answer   = normalizeParagraphs( faq.answer );
-					updated[ field ] = value;
-					return updated;
-				} );
-				setAttributes( { faqs: next } );
-			}
-
-			function updateParagraph( faqIndex, pIndex, value ) {
-				var paragraphs = normalizeParagraphs( faqs[ faqIndex ].answer ).slice();
-				paragraphs[ pIndex ] = value;
-				updateFaq( faqIndex, 'answer', paragraphs );
-			}
-
-			function addParagraph( faqIndex ) {
-				var paragraphs = normalizeParagraphs( faqs[ faqIndex ].answer ).slice();
-				paragraphs.push( '' );
-				updateFaq( faqIndex, 'answer', paragraphs );
-			}
-
-			function removeParagraph( faqIndex, pIndex ) {
-				var paragraphs = normalizeParagraphs( faqs[ faqIndex ].answer ).slice();
-				if ( paragraphs.length <= 1 ) {
-					return;
-				}
-				paragraphs.splice( pIndex, 1 );
-				updateFaq( faqIndex, 'answer', paragraphs );
-			}
-
-			function addFaq() {
-				setAttributes( { faqs: faqs.concat( [ { question: '', answer: [ '' ] } ] ) } );
-			}
-
-			function removeFaq( index ) {
-				if ( faqs.length <= 1 ) {
-					setAttributes( { faqs: [ { question: '', answer: [ '' ] } ] } );
-					return;
-				}
-				setAttributes( {
-					faqs: faqs.filter( function ( _, i ) {
-						return i !== index;
-					} ),
-				} );
-			}
-
-			function moveFaq( index, direction ) {
-				var newIndex = index + direction;
-				if ( newIndex < 0 || newIndex >= faqs.length ) {
-					return;
-				}
-				var next   = faqs.slice();
-				var temp   = next[ index ];
-				next[ index ]    = next[ newIndex ];
-				next[ newIndex ] = temp;
-				setAttributes( { faqs: next } );
-			}
-
-			// Sidebar controls.
 			var inspector = el(
 				InspectorControls,
 				null,
@@ -169,7 +98,6 @@
 				)
 			);
 
-			// Optional section title.
 			var titleField = el( RichText, {
 				tagName: 'h' + titleLevel,
 				className: 'cis_accordion__title-editor',
@@ -182,126 +110,85 @@
 				identifier: 'title',
 			} );
 
-			// FAQ pair rows.
-			var faqRows = faqs.map( function ( faq, index ) {
-				var paragraphs = normalizeParagraphs( faq.answer );
-
-				var controls = el(
-					'div',
-					{ className: 'cis_accordion__item-controls' },
-					el( Button, {
-						icon: 'arrow-up-alt2',
-						label: __( 'Move FAQ up', 'accessible-accordion-faq-schema' ),
-						onClick: function () { moveFaq( index, -1 ); },
-						disabled: 0 === index,
-						size: 'small',
-					} ),
-					el( Button, {
-						icon: 'arrow-down-alt2',
-						label: __( 'Move FAQ down', 'accessible-accordion-faq-schema' ),
-						onClick: function () { moveFaq( index, 1 ); },
-						disabled: index === faqs.length - 1,
-						size: 'small',
-					} ),
-					el( Button, {
-						icon: 'trash',
-						label: __( 'Remove FAQ', 'accessible-accordion-faq-schema' ),
-						onClick: function () { removeFaq( index ); },
-						isDestructive: true,
-						size: 'small',
-					} )
-				);
-
-				var questionField = el( RichText, {
-					tagName: 'div',
-					className: 'cis_accordion__question-editor',
-					value: faq.question || '',
-					onChange: function ( val ) {
-						updateFaq( index, 'question', val );
-					},
-					placeholder: __( 'Question…', 'accessible-accordion-faq-schema' ),
-					allowedFormats: [ 'core/bold', 'core/italic' ],
-					identifier: 'question-' + index,
-				} );
-
-				// One RichText per paragraph. onSplit is a no-op so pressing
-				// Enter inside an answer paragraph does NOT split the parent
-				// block; users add paragraphs via the explicit button below.
-				var paragraphRows = paragraphs.map( function ( paragraph, pIndex ) {
-					var pPlaceholder = 0 === pIndex
-						? __( 'Answer (use Cmd/Ctrl+K to insert a link)…', 'accessible-accordion-faq-schema' )
-						: __( 'Continue answer…', 'accessible-accordion-faq-schema' );
-
-					return el(
-						'div',
-						{ key: pIndex, className: 'cis_accordion__paragraph-editor-wrap' },
-						el( RichText, {
-							tagName: 'div',
-							className: 'cis_accordion__answer-editor',
-							value: paragraph || '',
-							onChange: function ( val ) {
-								updateParagraph( index, pIndex, val );
-							},
-							placeholder: pPlaceholder,
-							allowedFormats: [ 'core/bold', 'core/italic', 'core/link' ],
-							identifier: 'answer-' + index + '-' + pIndex,
-							onSplit: function () {},
-							onReplace: function () {},
-						} ),
-						paragraphs.length > 1
-							? el( Button, {
-								icon: 'no-alt',
-								label: __( 'Remove paragraph', 'accessible-accordion-faq-schema' ),
-								onClick: function () { removeParagraph( index, pIndex ); },
-								size: 'small',
-								className: 'cis_accordion__paragraph-remove',
-							} )
-							: null
-					);
-				} );
-
-				var addParagraphButton = el(
-					Button,
-					{
-						variant: 'tertiary',
-						onClick: function () { addParagraph( index ); },
-						size: 'small',
-						className: 'cis_accordion__add-paragraph',
-					},
-					__( '+ Add paragraph', 'accessible-accordion-faq-schema' )
-				);
-
-				return el(
-					'div',
-					{ key: index, className: 'cis_accordion__item-editor' },
-					controls,
-					questionField,
-					paragraphRows,
-					addParagraphButton
-				);
+			var innerBlocks = el( InnerBlocks, {
+				allowedBlocks: PARENT_ALLOWED,
+				template: PARENT_TEMPLATE,
+				templateLock: false,
+				orientation: 'vertical',
+				renderAppender: InnerBlocks.ButtonBlockAppender,
 			} );
-
-			var addButton = el(
-				Button,
-				{
-					variant: 'secondary',
-					onClick: addFaq,
-					className: 'cis_accordion__add-button',
-				},
-				__( 'Add FAQ', 'accessible-accordion-faq-schema' )
-			);
 
 			return el(
 				Fragment,
 				null,
 				inspector,
-				el( 'div', blockProps, titleField, faqRows, addButton )
+				el( 'div', blockProps, titleField, innerBlocks )
 			);
 		},
 
 		// Dynamic render — server-side via render.php.
 		save: function () {
-			return null;
+			return el( InnerBlocks.Content );
+		},
+	} );
+
+	// -----------------------------------------------------------------------
+	// Child block: cis/faq-item
+	// -----------------------------------------------------------------------
+
+	var CHILD_ALLOWED  = [
+		'core/paragraph',
+		'core/list',
+		'core/list-item',
+		'core/heading',
+		'core/quote',
+		'core/code',
+	];
+	var CHILD_TEMPLATE = [
+		[ 'core/paragraph', { placeholder: 'Answer (Enter for new paragraph; Cmd/Ctrl+K for a link)…' } ],
+	];
+
+	registerBlockType( 'cis/faq-item', {
+		edit: function ( props ) {
+			var attributes    = props.attributes;
+			var setAttributes = props.setAttributes;
+			var context       = props.context || {};
+
+			var question      = attributes.question || '';
+			var isCollapsible = !! context[ 'cis/accessible-accordion-faq/collapsible' ];
+
+			var blockProps = useBlockProps( {
+				className: 'cis_accordion__item-editor' + ( isCollapsible ? ' is-collapsible' : '' ),
+			} );
+
+			return el(
+				'div',
+				blockProps,
+				el( RichText, {
+					tagName: 'div',
+					className: 'cis_accordion__question-editor',
+					value: question,
+					onChange: function ( val ) {
+						setAttributes( { question: val } );
+					},
+					placeholder: __( 'Question…', 'accessible-accordion-faq-schema' ),
+					allowedFormats: [ 'core/bold', 'core/italic' ],
+					identifier: 'question',
+				} ),
+				el(
+					'div',
+					{ className: 'cis_accordion__answer-editor' },
+					el( InnerBlocks, {
+						allowedBlocks: CHILD_ALLOWED,
+						template: CHILD_TEMPLATE,
+						templateLock: false,
+					} )
+				)
+			);
+		},
+
+		save: function () {
+			return el( InnerBlocks.Content );
 		},
 	} );
 }( window.wp ) );
