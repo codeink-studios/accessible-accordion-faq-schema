@@ -117,12 +117,17 @@ if ( $cis_aafs_collapsible ) {
 	$cis_aafs_wrapper_classes .= ' cis_accordion--collapsible';
 }
 
+// get_block_wrapper_attributes() merges classes from block supports (color,
+// spacing, align, etc.) but its handling of arbitrary attributes like `id`
+// has been inconsistent across WP versions. We strip any auto-injected id
+// and prepend our own deterministically — anchor field if set, else "faq".
 $cis_aafs_wrapper_attrs = get_block_wrapper_attributes(
 	array(
 		'class' => $cis_aafs_wrapper_classes,
-		'id'    => $cis_aafs_anchor,
 	)
 );
+$cis_aafs_wrapper_attrs = preg_replace( '/\sid="[^"]*"/', '', $cis_aafs_wrapper_attrs );
+$cis_aafs_wrapper_attrs = sprintf( 'id="%s" ', esc_attr( $cis_aafs_anchor ) ) . $cis_aafs_wrapper_attrs;
 
 // ---------------------------------------------------------------------------
 // 5. Allowed inline HTML in questions (strict allowlist).

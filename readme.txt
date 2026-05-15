@@ -4,7 +4,7 @@ Tags: faq, accordion, schema, gutenberg, accessibility
 Requires at least: 6.3
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -98,6 +98,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 
 == Changelog ==
 
+= 1.1.1 =
+* Fixed: HTML anchor (and default `#faq`) not appearing in the wrapper `<div>` on the frontend in some WordPress versions. The wrapper id is now applied deterministically.
+
 = 1.1.0 =
 * Multi-paragraph answers. Each FAQ answer can now have any number of paragraphs, added via an "+ Add paragraph" control. Each paragraph is its own rich-text field with full link / bold / italic support.
 * Documented in the editor placeholder that links are added via Cmd/Ctrl+K (this has worked since 1.0.0 — now discoverable).
@@ -111,6 +114,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.1.1 =
+Fixes the wrapper id / HTML anchor not being applied on the frontend.
 
 = 1.1.0 =
 Adds multi-paragraph answer support. Backward compatible with existing 1.0.x FAQs.
