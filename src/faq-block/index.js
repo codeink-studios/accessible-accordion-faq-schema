@@ -44,6 +44,19 @@
 				faqs = [ { question: '', answer: '' } ];
 			}
 
+			// Normalize a FAQ's answer field to an array of paragraph strings.
+			// v1.0.x stored answer as a single string; v1.1.0+ stores it as
+			// an array of paragraph strings. This handles both.
+			function normalizeParagraphs( answer ) {
+				if ( Array.isArray( answer ) ) {
+					return answer.length > 0 ? answer : [ '' ];
+				}
+				if ( typeof answer === 'string' ) {
+					return [ answer ];
+				}
+				return [ '' ];
+			}
+
 			function updateFaq( index, field, value ) {
 				var next = faqs.map( function ( faq, i ) {
 					if ( i !== index ) {
@@ -51,20 +64,41 @@
 					}
 					var updated = {};
 					updated.question = faq.question || '';
-					updated.answer   = faq.answer || '';
+					updated.answer   = normalizeParagraphs( faq.answer );
 					updated[ field ] = value;
 					return updated;
 				} );
 				setAttributes( { faqs: next } );
 			}
 
+			function updateParagraph( faqIndex, pIndex, value ) {
+				var paragraphs = normalizeParagraphs( faqs[ faqIndex ].answer ).slice();
+				paragraphs[ pIndex ] = value;
+				updateFaq( faqIndex, 'answer', paragraphs );
+			}
+
+			function addParagraph( faqIndex ) {
+				var paragraphs = normalizeParagraphs( faqs[ faqIndex ].answer ).slice();
+				paragraphs.push( '' );
+				updateFaq( faqIndex, 'answer', paragraphs );
+			}
+
+			function removeParagraph( faqIndex, pIndex ) {
+				var paragraphs = normalizeParagraphs( faqs[ faqIndex ].answer ).slice();
+				if ( paragraphs.length <= 1 ) {
+					return;
+				}
+				paragraphs.splice( pIndex, 1 );
+				updateFaq( faqIndex, 'answer', paragraphs );
+			}
+
 			function addFaq() {
-				setAttributes( { faqs: faqs.concat( [ { question: '', answer: '' } ] ) } );
+				setAttributes( { faqs: faqs.concat( [ { question: '', answer: [ '' ] } ] ) } );
 			}
 
 			function removeFaq( index ) {
 				if ( faqs.length <= 1 ) {
-					setAttributes( { faqs: [ { question: '', answer: '' } ] } );
+					setAttributes( { faqs: [ { question: '', answer: [ '' ] } ] } );
 					return;
 				}
 				setAttributes( {
@@ -150,62 +184,100 @@
 
 			// FAQ pair rows.
 			var faqRows = faqs.map( function ( faq, index ) {
+				var paragraphs = normalizeParagraphs( faq.answer );
+
+				var controls = el(
+					'div',
+					{ className: 'cis_accordion__item-controls' },
+					el( Button, {
+						icon: 'arrow-up-alt2',
+						label: __( 'Move FAQ up', 'accessible-accordion-faq-schema' ),
+						onClick: function () { moveFaq( index, -1 ); },
+						disabled: 0 === index,
+						size: 'small',
+					} ),
+					el( Button, {
+						icon: 'arrow-down-alt2',
+						label: __( 'Move FAQ down', 'accessible-accordion-faq-schema' ),
+						onClick: function () { moveFaq( index, 1 ); },
+						disabled: index === faqs.length - 1,
+						size: 'small',
+					} ),
+					el( Button, {
+						icon: 'trash',
+						label: __( 'Remove FAQ', 'accessible-accordion-faq-schema' ),
+						onClick: function () { removeFaq( index ); },
+						isDestructive: true,
+						size: 'small',
+					} )
+				);
+
+				var questionField = el( RichText, {
+					tagName: 'div',
+					className: 'cis_accordion__question-editor',
+					value: faq.question || '',
+					onChange: function ( val ) {
+						updateFaq( index, 'question', val );
+					},
+					placeholder: __( 'Question…', 'accessible-accordion-faq-schema' ),
+					allowedFormats: [ 'core/bold', 'core/italic' ],
+					identifier: 'question-' + index,
+				} );
+
+				// One RichText per paragraph. onSplit is a no-op so pressing
+				// Enter inside an answer paragraph does NOT split the parent
+				// block; users add paragraphs via the explicit button below.
+				var paragraphRows = paragraphs.map( function ( paragraph, pIndex ) {
+					var pPlaceholder = 0 === pIndex
+						? __( 'Answer (use Cmd/Ctrl+K to insert a link)…', 'accessible-accordion-faq-schema' )
+						: __( 'Continue answer…', 'accessible-accordion-faq-schema' );
+
+					return el(
+						'div',
+						{ key: pIndex, className: 'cis_accordion__paragraph-editor-wrap' },
+						el( RichText, {
+							tagName: 'div',
+							className: 'cis_accordion__answer-editor',
+							value: paragraph || '',
+							onChange: function ( val ) {
+								updateParagraph( index, pIndex, val );
+							},
+							placeholder: pPlaceholder,
+							allowedFormats: [ 'core/bold', 'core/italic', 'core/link' ],
+							identifier: 'answer-' + index + '-' + pIndex,
+							onSplit: function () {},
+							onReplace: function () {},
+						} ),
+						paragraphs.length > 1
+							? el( Button, {
+								icon: 'no-alt',
+								label: __( 'Remove paragraph', 'accessible-accordion-faq-schema' ),
+								onClick: function () { removeParagraph( index, pIndex ); },
+								size: 'small',
+								className: 'cis_accordion__paragraph-remove',
+							} )
+							: null
+					);
+				} );
+
+				var addParagraphButton = el(
+					Button,
+					{
+						variant: 'tertiary',
+						onClick: function () { addParagraph( index ); },
+						size: 'small',
+						className: 'cis_accordion__add-paragraph',
+					},
+					__( '+ Add paragraph', 'accessible-accordion-faq-schema' )
+				);
+
 				return el(
 					'div',
 					{ key: index, className: 'cis_accordion__item-editor' },
-					el(
-						'div',
-						{ className: 'cis_accordion__item-controls' },
-						el( Button, {
-							icon: 'arrow-up-alt2',
-							label: __( 'Move FAQ up', 'accessible-accordion-faq-schema' ),
-							onClick: function () {
-								moveFaq( index, -1 );
-							},
-							disabled: 0 === index,
-							size: 'small',
-						} ),
-						el( Button, {
-							icon: 'arrow-down-alt2',
-							label: __( 'Move FAQ down', 'accessible-accordion-faq-schema' ),
-							onClick: function () {
-								moveFaq( index, 1 );
-							},
-							disabled: index === faqs.length - 1,
-							size: 'small',
-						} ),
-						el( Button, {
-							icon: 'trash',
-							label: __( 'Remove FAQ', 'accessible-accordion-faq-schema' ),
-							onClick: function () {
-								removeFaq( index );
-							},
-							isDestructive: true,
-							size: 'small',
-						} )
-					),
-					el( RichText, {
-						tagName: 'div',
-						className: 'cis_accordion__question-editor',
-						value: faq.question || '',
-						onChange: function ( val ) {
-							updateFaq( index, 'question', val );
-						},
-						placeholder: __( 'Question…', 'accessible-accordion-faq-schema' ),
-						allowedFormats: [ 'core/bold', 'core/italic' ],
-						identifier: 'question-' + index,
-					} ),
-					el( RichText, {
-						tagName: 'div',
-						className: 'cis_accordion__answer-editor',
-						value: faq.answer || '',
-						onChange: function ( val ) {
-							updateFaq( index, 'answer', val );
-						},
-						placeholder: __( 'Answer…', 'accessible-accordion-faq-schema' ),
-						allowedFormats: [ 'core/bold', 'core/italic', 'core/link' ],
-						identifier: 'answer-' + index,
-					} )
+					controls,
+					questionField,
+					paragraphRows,
+					addParagraphButton
 				);
 			} );
 

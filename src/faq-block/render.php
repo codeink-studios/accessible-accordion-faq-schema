@@ -34,25 +34,53 @@ $cis_aafs_anchor      = '' !== $cis_aafs_anchor_raw
 	? sanitize_html_class( $cis_aafs_anchor_raw )
 	: 'faq';
 
-// Validate FAQs: must be array of objects with question + answer strings.
+// Validate FAQs. Each FAQ must have a question string and an answer that is
+// either a string (legacy v1.0.x format, kept for backward compatibility)
+// or an array of paragraph strings (v1.1.0+ format).
 $cis_aafs_faqs = array();
 if ( isset( $attributes['faqs'] ) && is_array( $attributes['faqs'] ) ) {
 	foreach ( $attributes['faqs'] as $cis_aafs_faq ) {
 		if ( ! is_array( $cis_aafs_faq ) ) {
 			continue;
 		}
+
 		$cis_aafs_q = isset( $cis_aafs_faq['question'] ) && is_string( $cis_aafs_faq['question'] )
 			? trim( $cis_aafs_faq['question'] )
 			: '';
-		$cis_aafs_a = isset( $cis_aafs_faq['answer'] ) && is_string( $cis_aafs_faq['answer'] )
-			? trim( $cis_aafs_faq['answer'] )
-			: '';
-		if ( '' === $cis_aafs_q || '' === $cis_aafs_a ) {
+		if ( '' === $cis_aafs_q ) {
 			continue;
 		}
+
+		// Normalize answer to array-of-paragraphs form.
+		$cis_aafs_paragraphs = array();
+		if ( isset( $cis_aafs_faq['answer'] ) ) {
+			if ( is_array( $cis_aafs_faq['answer'] ) ) {
+				foreach ( $cis_aafs_faq['answer'] as $cis_aafs_p ) {
+					if ( is_string( $cis_aafs_p ) ) {
+						$cis_aafs_paragraphs[] = $cis_aafs_p;
+					}
+				}
+			} elseif ( is_string( $cis_aafs_faq['answer'] ) ) {
+				// Legacy v1.0.x single-string answer.
+				$cis_aafs_paragraphs[] = $cis_aafs_faq['answer'];
+			}
+		}
+
+		// Trim + drop empty paragraphs.
+		$cis_aafs_paragraphs = array_values( array_filter(
+			array_map( 'trim', $cis_aafs_paragraphs ),
+			static function ( $p ) {
+				return '' !== $p;
+			}
+		) );
+
+		if ( empty( $cis_aafs_paragraphs ) ) {
+			continue;
+		}
+
 		$cis_aafs_faqs[] = array(
-			'question' => $cis_aafs_q,
-			'answer'   => $cis_aafs_a,
+			'question'   => $cis_aafs_q,
+			'paragraphs' => $cis_aafs_paragraphs,
 		);
 	}
 }
@@ -117,14 +145,14 @@ $cis_aafs_schema = array(
 	'mainEntity' => array(),
 );
 foreach ( $cis_aafs_faqs as $cis_aafs_faq ) {
-	// Schema fields are plain text. Strip all HTML and decode entities so
-	// search engines see clean prose.
+	// Schema fields are plain text. Strip all HTML so search engines see
+	// clean prose. Multiple paragraphs joined with blank lines.
 	$cis_aafs_schema['mainEntity'][] = array(
 		'@type'          => 'Question',
 		'name'           => wp_strip_all_tags( $cis_aafs_faq['question'] ),
 		'acceptedAnswer' => array(
 			'@type' => 'Answer',
-			'text'  => wp_strip_all_tags( $cis_aafs_faq['answer'] ),
+			'text'  => wp_strip_all_tags( implode( "\n\n", $cis_aafs_faq['paragraphs'] ) ),
 		),
 	);
 }
@@ -161,12 +189,22 @@ if ( false === $cis_aafs_schema_json ) {
 		<?php
 		foreach ( $cis_aafs_faqs as $cis_aafs_index => $cis_aafs_faq ) :
 			$cis_aafs_q_html = wp_kses( $cis_aafs_faq['question'], $cis_aafs_q_allowed );
-			$cis_aafs_a_html = wp_kses_post( $cis_aafs_faq['answer'] );
 
-			// Wrap answer in <p> if it doesn't already start with a block-level tag.
-			if ( ! preg_match( '/^\s*<(p|ul|ol|div|blockquote|h[1-6])\b/i', $cis_aafs_a_html ) ) {
-				$cis_aafs_a_html = '<p>' . $cis_aafs_a_html . '</p>';
+			// Build the answer HTML: wrap each paragraph in <p> unless it
+			// already starts with a block-level tag (legacy <p>...</p> strings
+			// passed through wp_kses_post stay intact).
+			$cis_aafs_a_parts = array();
+			foreach ( $cis_aafs_faq['paragraphs'] as $cis_aafs_p ) {
+				$cis_aafs_p_html = wp_kses_post( $cis_aafs_p );
+				if ( '' === $cis_aafs_p_html ) {
+					continue;
+				}
+				if ( ! preg_match( '/^\s*<(p|ul|ol|div|blockquote|h[1-6])\b/i', $cis_aafs_p_html ) ) {
+					$cis_aafs_p_html = '<p>' . $cis_aafs_p_html . '</p>';
+				}
+				$cis_aafs_a_parts[] = $cis_aafs_p_html;
 			}
+			$cis_aafs_a_html = implode( "\n", $cis_aafs_a_parts );
 
 			$cis_aafs_q_id = sprintf( 'cis-aafs-%s-%d-q', $cis_aafs_instance, $cis_aafs_index + 1 );
 			$cis_aafs_a_id = sprintf( 'cis-aafs-%s-%d-a', $cis_aafs_instance, $cis_aafs_index + 1 );

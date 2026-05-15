@@ -4,7 +4,7 @@ Tags: faq, accordion, schema, gutenberg, accessibility
 Requires at least: 6.3
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.1.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -98,6 +98,11 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 
 == Changelog ==
 
+= 1.1.0 =
+* Multi-paragraph answers. Each FAQ answer can now have any number of paragraphs, added via an "+ Add paragraph" control. Each paragraph is its own rich-text field with full link / bold / italic support.
+* Documented in the editor placeholder that links are added via Cmd/Ctrl+K (this has worked since 1.0.0 — now discoverable).
+* Backward compatible: existing FAQs with single-string answers continue to render correctly and are auto-migrated to the new structure on next edit.
+
 = 1.0.1 =
 * Removed the question's bottom border when its answer is expanded, so an open item reads as one continuous block.
 * Added a subtle 180ms fade + slide reveal animation when an answer expands. Gated behind `prefers-reduced-motion: no-preference` — users with motion-sensitivity preferences get the instant default.
@@ -106,6 +111,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Adds multi-paragraph answer support. Backward compatible with existing 1.0.x FAQs.
 
 = 1.0.1 =
 Visual polish: cleaner open state and an opt-out-respecting expand animation.
