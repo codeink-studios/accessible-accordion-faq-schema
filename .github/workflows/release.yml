@@ -1,0 +1,41 @@
+name: Build and Release
+
+# Triggered when a version tag (v1.0.0, v1.1.0, etc.) is pushed.
+# Creates a GitHub Release with an attached plugin ZIP that the
+# bundled update checker can pull for in-WordPress click-to-update.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout into named subdirectory
+        uses: actions/checkout@v4
+        with:
+          path: accessible-accordion-faq-schema
+
+      - name: Build plugin ZIP
+        run: |
+          zip -r accessible-accordion-faq-schema.zip accessible-accordion-faq-schema \
+            -x "accessible-accordion-faq-schema/.git/*" \
+            -x "accessible-accordion-faq-schema/.github/*" \
+            -x "accessible-accordion-faq-schema/.gitignore" \
+            -x "accessible-accordion-faq-schema/.DS_Store" \
+            -x "accessible-accordion-faq-schema/**/.DS_Store" \
+            -x "accessible-accordion-faq-schema/*.zip"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: accessible-accordion-faq-schema
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            ../accessible-accordion-faq-schema.zip \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

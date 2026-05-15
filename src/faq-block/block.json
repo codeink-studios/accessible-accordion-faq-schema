@@ -1,0 +1,68 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "cis/accessible-accordion-faq",
+	"version": "1.0.0",
+	"title": "Accessible FAQ Accordion",
+	"category": "text",
+	"icon": "editor-help",
+	"description": "Accessible FAQ accordion with FAQPage JSON-LD schema. Theme-inheriting, no dependencies.",
+	"keywords": [ "faq", "accordion", "schema", "questions", "answers" ],
+	"textdomain": "accessible-accordion-faq-schema",
+	"supports": {
+		"anchor": true,
+		"html": false,
+		"align": [ "wide", "full" ],
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"color": {
+			"text": true,
+			"background": true,
+			"link": true
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true
+		}
+	},
+	"attributes": {
+		"title": {
+			"type": "string",
+			"default": ""
+		},
+		"titleLevel": {
+			"type": "number",
+			"default": 2
+		},
+		"faqs": {
+			"type": "array",
+			"default": [
+				{ "question": "", "answer": "" }
+			],
+			"items": {
+				"type": "object"
+			}
+		},
+		"collapsible": {
+			"type": "boolean",
+			"default": false
+		}
+	},
+	"example": {
+		"attributes": {
+			"title": "Frequently Asked Questions",
+			"titleLevel": 2,
+			"collapsible": false,
+			"faqs": [
+				{ "question": "What is your return policy?", "answer": "You can return items within 30 days of purchase." },
+				{ "question": "Do you ship internationally?", "answer": "Yes, we ship to most countries worldwide." }
+			]
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./editor.css",
+	"style": "file:./style.css",
+	"render": "file:./render.php"
+}

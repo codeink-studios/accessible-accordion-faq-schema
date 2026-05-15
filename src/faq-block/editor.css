@@ -1,0 +1,59 @@
+/**
+ * Accessible FAQ Accordion — editor-only styles.
+ *
+ * Scoped to .cis_accordion-editor so they never bleed into the frontend.
+ *
+ * @package CIS_AAFS
+ */
+
+.cis_accordion-editor {
+	border: 1px dashed rgba(0, 0, 0, 0.15);
+	padding: 1rem;
+	border-radius: 4px;
+}
+
+.cis_accordion__title-editor {
+	margin: 0 0 1rem;
+	font-weight: 600;
+}
+
+.cis_accordion__title-editor[data-rich-text-placeholder]::before,
+.cis_accordion__title-editor:empty::before {
+	opacity: 0.5;
+}
+
+.cis_accordion__item-editor {
+	position: relative;
+	margin: 0 0 1rem;
+	padding: 0.75rem 0.75rem 0.75rem 0.75rem;
+	background: rgba(0, 0, 0, 0.025);
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	border-radius: 4px;
+}
+
+.cis_accordion__item-editor:last-of-type {
+	margin-bottom: 0.75rem;
+}
+
+.cis_accordion__item-controls {
+	position: absolute;
+	top: 0.4rem;
+	right: 0.4rem;
+	display: flex;
+	gap: 0.15rem;
+}
+
+.cis_accordion__question-editor {
+	font-weight: 600;
+	min-height: 1.5em;
+	margin: 0 6rem 0.5rem 0; /* leave room for controls */
+}
+
+.cis_accordion__answer-editor {
+	min-height: 1.5em;
+	margin: 0;
+}
+
+.cis_accordion__add-button.components-button {
+	margin-top: 0.25rem;
+}

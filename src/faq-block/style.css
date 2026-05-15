@@ -1,0 +1,136 @@
+/**
+ * Accessible FAQ Accordion — frontend + editor preview styles.
+ *
+ * All typography (font-family, size, weight) and color inherits from the
+ * active theme. Only layout (margin, padding, spacing, focus indicator) is
+ * defined here. Uses WordPress theme.json spacing presets with sensible
+ * fallbacks when the theme does not expose them.
+ *
+ * @package CIS_AAFS
+ */
+
+.cis_accordion {
+	color: inherit;
+	font-family: inherit;
+	margin: 0 0 var(--wp--preset--spacing--50, 2rem);
+}
+
+.cis_accordion__title {
+	margin: 0 0 var(--wp--preset--spacing--40, 1.5rem);
+}
+
+.cis_accordion__list {
+	margin: 0;
+	padding: 0;
+}
+
+.cis_accordion__question {
+	margin: 0;
+	padding: 0;
+	font-weight: 600;
+}
+
+.cis_accordion__answer {
+	margin: 0 0 var(--wp--preset--spacing--40, 1.5rem);
+	padding: 0;
+}
+
+.cis_accordion__question + .cis_accordion__answer {
+	margin-top: var(--wp--preset--spacing--20, 0.5rem);
+}
+
+.cis_accordion__answer > :first-child {
+	margin-top: 0;
+}
+
+.cis_accordion__answer > :last-child {
+	margin-bottom: 0;
+}
+
+/* -------------------------------------------------------------------------
+ * Collapsible variant
+ * ---------------------------------------------------------------------- */
+
+.cis_accordion--collapsible .cis_accordion__list {
+	border-top: 1px solid currentColor;
+	border-color: rgba(0, 0, 0, 0.12);
+}
+
+.cis_accordion--collapsible .cis_accordion__question {
+	margin: 0;
+	border-bottom: 1px solid currentColor;
+	border-color: rgba(0, 0, 0, 0.12);
+}
+
+.cis_accordion--collapsible .cis_accordion__answer {
+	margin: 0;
+	border-bottom: 1px solid currentColor;
+	border-color: rgba(0, 0, 0, 0.12);
+}
+
+.cis_accordion--collapsible .cis_accordion__answer[hidden] {
+	display: none;
+}
+
+.cis_accordion--collapsible .cis_accordion__answer:not([hidden]) {
+	padding: var(--wp--preset--spacing--30, 0.75rem) 0;
+}
+
+/* Trigger rules are scoped under .cis_accordion (specificity 0,2,0) so they
+ * beat single-class theme button rules like `.entry-content button`
+ * (specificity 0,1,1) without resorting to !important. */
+.cis_accordion .cis_accordion__trigger {
+	appearance: none;
+	-webkit-appearance: none;
+	background: transparent;
+	border: 0;
+	margin: 0;
+	padding: var(--wp--preset--spacing--30, 0.75rem) 0;
+	width: 100%;
+	text-align: left;
+	cursor: pointer;
+
+	/* Inherit typography from the parent <dt> (which inherits from the theme). */
+	font: inherit;
+	color: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
+
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75em;
+}
+
+.cis_accordion .cis_accordion__trigger-text {
+	flex: 1 1 auto;
+}
+
+.cis_accordion .cis_accordion__trigger::after {
+	content: "+";
+	flex-shrink: 0;
+	line-height: 1;
+	font-size: 1em;
+	font-weight: 400;
+	speak: none;
+}
+
+.cis_accordion .cis_accordion__trigger[aria-expanded="true"]::after {
+	content: "\2212"; /* Unicode minus, visually heavier than hyphen */
+}
+
+.cis_accordion .cis_accordion__trigger:focus {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+/* Replace the default outline with focus-visible where supported, so mouse
+ * clicks don't show a focus ring while keyboard focus still does. */
+.cis_accordion .cis_accordion__trigger:focus:not(:focus-visible) {
+	outline: none;
+}
+
+.cis_accordion .cis_accordion__trigger:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
