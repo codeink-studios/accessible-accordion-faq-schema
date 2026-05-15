@@ -3,7 +3,7 @@
  * Plugin Name:       Accessible Accordion Block with FAQ Schema
  * Plugin URI:        https://github.com/codeink-studios/accessible-accordion-faq-schema
  * Description:       Gutenberg block for accessible FAQ accordions with FAQPage JSON-LD schema. Theme-inheriting, no dependencies, no external services.
- * Version:           2.0.0
+ * Version:           2.0.1
  * Requires at least: 6.3
  * Requires PHP:      7.4
  * Author:            CodeInk Studios
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CIS_AAFS_VERSION', '2.0.0' );
+define( 'CIS_AAFS_VERSION', '2.0.1' );
 define( 'CIS_AAFS_FILE', __FILE__ );
 define( 'CIS_AAFS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CIS_AAFS_URL', plugin_dir_url( __FILE__ ) );

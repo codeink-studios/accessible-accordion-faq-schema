@@ -4,7 +4,7 @@ Tags: faq, accordion, schema, gutenberg, accessibility
 Requires at least: 6.3
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 2.0.0
+Stable tag: 2.0.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -98,6 +98,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 
 == Changelog ==
 
+= 2.0.1 =
+* Fixed: HTML anchor field saved an empty value and the wrapper id always rendered as the default `faq`. WordPress's built-in `supports.anchor` feature sources the anchor value from the saved HTML's `id` attribute, which fails for dynamic blocks (no saved HTML). Replaced with a custom anchor attribute and matching field in the Advanced sidebar that stores the value in the block comment JSON like a normal attribute.
+
 = 2.0.0 =
 * **Breaking change in the editor.** Answers now use native WordPress block editing — press Enter for a new paragraph, Shift+Enter for a line break, Cmd/Ctrl+K for a link. Lists, headings, blockquotes, and code blocks are all supported inside answers via the standard block inserter.
 * Architecture: the block is now split into a parent (Accessible FAQ Accordion) and a child (FAQ Item). Each child holds its question as a string and its answer as nested blocks.
@@ -120,6 +123,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 * Initial release.
 
 == Upgrade Notice ==
+
+= 2.0.1 =
+Fixes the HTML anchor field saving an empty value (the wrapper id was always rendering as the default "faq"). Any anchor you previously typed needs to be re-entered after upgrading.
 
 = 2.0.0 =
 Major editor refactor: native WordPress block editing inside FAQ answers (Enter = new paragraph, Shift+Enter = line break, lists/headings/links supported). Existing v1.x FAQ blocks must be deleted and re-created.

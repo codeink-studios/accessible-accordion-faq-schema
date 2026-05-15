@@ -15,17 +15,19 @@
 ( function ( wp ) {
 	'use strict';
 
-	var registerBlockType = wp.blocks.registerBlockType;
-	var useBlockProps     = wp.blockEditor.useBlockProps;
-	var InspectorControls = wp.blockEditor.InspectorControls;
-	var InnerBlocks       = wp.blockEditor.InnerBlocks;
-	var RichText          = wp.blockEditor.RichText;
-	var PanelBody         = wp.components.PanelBody;
-	var SelectControl     = wp.components.SelectControl;
-	var ToggleControl     = wp.components.ToggleControl;
-	var el                = wp.element.createElement;
-	var Fragment          = wp.element.Fragment;
-	var __                = wp.i18n.__;
+	var registerBlockType         = wp.blocks.registerBlockType;
+	var useBlockProps             = wp.blockEditor.useBlockProps;
+	var InspectorControls         = wp.blockEditor.InspectorControls;
+	var InspectorAdvancedControls = wp.blockEditor.InspectorAdvancedControls;
+	var InnerBlocks               = wp.blockEditor.InnerBlocks;
+	var RichText                  = wp.blockEditor.RichText;
+	var PanelBody                 = wp.components.PanelBody;
+	var SelectControl             = wp.components.SelectControl;
+	var ToggleControl             = wp.components.ToggleControl;
+	var TextControl               = wp.components.TextControl;
+	var el                        = wp.element.createElement;
+	var Fragment                  = wp.element.Fragment;
+	var __                        = wp.i18n.__;
 
 	// -----------------------------------------------------------------------
 	// Parent block: cis/accessible-accordion-faq
@@ -45,6 +47,7 @@
 				titleLevel = 2;
 			}
 			var collapsible = !! attributes.collapsible;
+			var anchor      = ( typeof attributes.anchor === 'string' ) ? attributes.anchor : '';
 
 			var blockProps = useBlockProps( {
 				className: 'cis_accordion-editor' + ( collapsible ? ' is-collapsible' : '' ),
@@ -93,9 +96,29 @@
 					el(
 						'p',
 						{ style: { margin: 0, fontSize: '12px' } },
-						__( 'FAQPage JSON-LD schema is generated automatically. To customize the anchor link (default: #faq), use the "HTML anchor" field under Advanced.', 'accessible-accordion-faq-schema' )
+						__( 'FAQPage JSON-LD schema is generated automatically. The wrapper id defaults to "faq". Customize via the HTML anchor field in the Advanced panel below.', 'accessible-accordion-faq-schema' )
 					)
 				)
+			);
+
+			// Custom HTML anchor field. We do NOT use supports.anchor here
+			// because that maps the anchor to a saved-HTML `id` attribute,
+			// which fails for dynamic blocks where save() returns no HTML.
+			var advanced = el(
+				InspectorAdvancedControls,
+				null,
+				el( TextControl, {
+					label: __( 'HTML anchor', 'accessible-accordion-faq-schema' ),
+					help: __( 'Used as the wrapper id, so visitors can link directly to this FAQ section (e.g. yourpage.com/about/#shipping). Leave empty for the default "faq". Letters, numbers, hyphens, and underscores only.', 'accessible-accordion-faq-schema' ),
+					value: anchor,
+					onChange: function ( val ) {
+						// Sanitize input live: keep only chars valid in HTML ids,
+						// matching server-side sanitize_html_class() behavior.
+						var clean = String( val ).replace( /[^A-Za-z0-9_-]/g, '' );
+						setAttributes( { anchor: clean } );
+					},
+					__nextHasNoMarginBottom: true,
+				} )
 			);
 
 			var titleField = el( RichText, {
@@ -122,6 +145,7 @@
 				Fragment,
 				null,
 				inspector,
+				advanced,
 				el( 'div', blockProps, titleField, innerBlocks )
 			);
 		},
