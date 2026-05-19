@@ -36,18 +36,15 @@ $cis_aafs_anchor      = '' !== $cis_aafs_anchor_raw
 	: 'faq';
 
 // Legacy gate: blocks saved before v3.0 have no blockVersion attribute. Force
-// the v2.x defaults (schema on, JS-accordion mode) so upgrading the plugin
-// never silently regresses an existing site's markup. Once the post is opened
-// in the v3 editor, edit() writes blockVersion=3 plus the preserved values
-// and this branch stops applying. New v3 blocks get blockVersion=3 written
-// on first edit() mount and honor whatever the operator sets.
+// the v2.x schema default (on) so upgrading the plugin never silently regresses
+// an existing site's structured data. Once the post is opened in the v3+
+// editor, edit() writes blockVersion=3 plus the preserved schema value and
+// this branch stops applying.
 $cis_aafs_block_version = isset( $attributes['blockVersion'] ) ? (int) $attributes['blockVersion'] : 0;
 if ( $cis_aafs_block_version < 3 ) {
-	$cis_aafs_enable_schema      = true;
-	$cis_aafs_use_native_details = false;
+	$cis_aafs_enable_schema = true;
 } else {
-	$cis_aafs_enable_schema      = ! empty( $attributes['enableSchema'] );
-	$cis_aafs_use_native_details = ! empty( $attributes['useNativeDetails'] );
+	$cis_aafs_enable_schema = ! empty( $attributes['enableSchema'] );
 }
 
 // ---------------------------------------------------------------------------
@@ -114,26 +111,13 @@ if ( ! $cis_aafs_has_complete ) {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Conditionally enqueue the tiny accordion script.
-// Only needed for the legacy JS-button mode. Native <details>/<summary> mode
-// ships zero JavaScript.
-// ---------------------------------------------------------------------------
-
-if ( $cis_aafs_collapsible && ! $cis_aafs_use_native_details ) {
-	wp_enqueue_script( 'cis-aafs-toggle' );
-}
-
-// ---------------------------------------------------------------------------
-// 4. Build wrapper attributes (merges in block supports: color, spacing, etc.)
+// 3. Build wrapper attributes (merges in block supports: color, spacing, etc.)
 // then deterministically prepend our id.
 // ---------------------------------------------------------------------------
 
 $cis_aafs_wrapper_classes = 'cis_accordion';
 if ( $cis_aafs_collapsible ) {
 	$cis_aafs_wrapper_classes .= ' cis_accordion--collapsible';
-	if ( $cis_aafs_use_native_details ) {
-		$cis_aafs_wrapper_classes .= ' cis_accordion--native';
-	}
 }
 
 $cis_aafs_wrapper_attrs = get_block_wrapper_attributes(
@@ -145,7 +129,7 @@ $cis_aafs_wrapper_attrs = preg_replace( '/\sid="[^"]*"/', '', $cis_aafs_wrapper_
 $cis_aafs_wrapper_attrs = sprintf( 'id="%s" ', esc_attr( $cis_aafs_anchor ) ) . $cis_aafs_wrapper_attrs;
 
 // ---------------------------------------------------------------------------
-// 5. Encode JSON-LD only if schema emission is enabled. JSON_HEX_TAG keeps
+// 4. Encode JSON-LD only if schema emission is enabled. JSON_HEX_TAG keeps
 // the payload from ever containing a literal </script> sequence that would
 // break the surrounding script tag.
 // ---------------------------------------------------------------------------
@@ -167,12 +151,12 @@ if ( $cis_aafs_enable_schema && ! empty( $cis_aafs_schema_items ) ) {
 }
 
 // ---------------------------------------------------------------------------
-// 6. Render. Body wrapper is <dl> for the classic dt/dd layout (open mode and
-// legacy JS-accordion mode), <div> when native <details> mode is on (since
-// <details> can't live inside <dl> per the HTML spec).
+// 5. Render. Body wrapper is <dl> for the open dt/dd layout, <div> when
+// collapsible (the native <details> element can't live inside <dl> per the
+// HTML spec).
 // ---------------------------------------------------------------------------
 
-$cis_aafs_list_tag = $cis_aafs_use_native_details ? 'div' : 'dl';
+$cis_aafs_list_tag = $cis_aafs_collapsible ? 'div' : 'dl';
 ?>
 <div <?php echo $cis_aafs_wrapper_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_block_wrapper_attributes() output + our esc_attr'd id prefix. ?>>
 	<?php if ( '' !== $cis_aafs_title ) : ?>

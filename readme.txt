@@ -4,7 +4,7 @@ Tags: faq, accordion, schema, gutenberg, accessibility
 Requires at least: 6.3
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 3.0.0
+Stable tag: 3.0.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,13 +16,13 @@ Adds an **Accessible FAQ Accordion** block to the WordPress block editor. The bl
 
 **Highlights**
 
-* **Accessible by default.** Two collapsible variants — native `<details>`/`<summary>` (zero JavaScript, recommended) or a custom `<button>` + ARIA wiring (`aria-expanded`, `aria-controls`, `role="region"`). Both are fully keyboard-operable.
+* **Accessible by default.** Collapsible mode uses the browser's native `<details>`/`<summary>` element — fully keyboard-operable, screen-reader friendly, no JavaScript required.
 * **Theme-inheriting.** No hardcoded typography or color — your theme's fonts, sizes, weights, and colors apply automatically. Uses `theme.json` spacing presets with sensible fallbacks.
-* **Lightweight.** No jQuery, no build step, no external requests, no tracking. The optional frontend script (about 0.5 KB) loads only when at least one block on the page uses the legacy JS-accordion variant. The native `<details>` variant ships zero JavaScript.
+* **Zero JavaScript on the frontend.** No jQuery, no build step, no external requests, no tracking. Open mode is plain `<dl>`/`<dt>`/`<dd>`; collapsible mode is native `<details>`/`<summary>`. Either way, nothing is enqueued on the page.
 * **Optional FAQPage schema.** JSON-LD is opt-in per block (off by default). Generated server-side from sanitized data when enabled. See the FAQ below for context on Google's May 2026 deprecation and why the markup is still worth emitting on the right pages.
 * **Default `#faq` anchor.** Wrapper `<div>` is given `id="faq"` by default so visitors can link straight to `yoursite.com/page/#faq`. Override per-block via the "HTML anchor" field under Advanced.
 * **Security-first.** All input is sanitized server-side; all output is escaped at the point of output; JSON-LD is hex-encoded against `</script>` breakout.
-* **Three layout modes.** Open (default): all answers visible — no JavaScript. Native `<details>`: collapsible with the browser's built-in disclosure element, zero JavaScript. JS accordion: collapsible via a tiny `<button>` toggle script (kept for backward compatibility).
+* **Two layout modes.** Open (default): all answers visible — plain `<dl>`/`<dt>`/`<dd>`. Collapsible: native `<details>`/`<summary>` accordion.
 
 **Markup output**
 
@@ -36,30 +36,15 @@ When collapsible mode is **off** (open, default):
   </dl>
 </div>`
 
-When collapsible mode is **on** with **native `<details>`** (recommended):
+When collapsible mode is **on**:
 
-`<div id="faq" class="cis_accordion cis_accordion--collapsible cis_accordion--native">
+`<div id="faq" class="cis_accordion cis_accordion--collapsible">
   <div class="cis_accordion__list">
     <details class="cis_accordion__item">
       <summary class="cis_accordion__question">Question text</summary>
       <div class="cis_accordion__answer"><p>Answer text</p></div>
     </details>
   </div>
-</div>`
-
-When collapsible mode is **on** with the **legacy JS accordion** (no native details):
-
-`<div id="faq" class="cis_accordion cis_accordion--collapsible">
-  <dl class="cis_accordion__list">
-    <dt class="cis_accordion__question">
-      <button class="cis_accordion__trigger" type="button" aria-expanded="false" aria-controls="…">
-        <span class="cis_accordion__trigger-text">Question text</span>
-      </button>
-    </dt>
-    <dd class="cis_accordion__answer" role="region" aria-labelledby="…" hidden>
-      <p>Answer text</p>
-    </dd>
-  </dl>
 </div>`
 
 When the schema toggle is **on**, a `<script type="application/ld+json">` block containing the `FAQPage` schema is appended inside the wrapper `<div>` regardless of which layout mode is active.
@@ -87,7 +72,7 @@ Yes. Typography, colors, and spacing inherit from your active theme. The plugin 
 
 = Is the JSON-LD schema configurable? =
 
-The schema is generated automatically from the question/answer pairs you enter and conforms to schema.org's `FAQPage` type. Schema emission is **off by default** in v3.0+ — toggle it on per block via the **Schema** panel in the Inspector sidebar when this FAQ block is the primary content of the page (or when you want to provide structured Q/A signal to AI search surfaces).
+The schema is generated automatically from the question/answer pairs you enter and conforms to schema.org's `FAQPage` type. Schema emission is **off by default** in v3.0+ — toggle it on per block via the **Enable FAQ schema (JSON-LD)** toggle in the **FAQ settings** panel of the Inspector sidebar when this FAQ block is the primary content of the page (or when you want to provide structured Q/A signal to AI search surfaces).
 
 = Why is FAQ schema off by default in v3.0? =
 
@@ -95,9 +80,9 @@ Google removed FAQ rich results from Search on 7 May 2026 (full removal slated f
 
 Existing v2.x blocks keep schema **on** after upgrading — the off-by-default rule applies only to newly inserted v3.0 blocks. You can turn it off on existing blocks via the same toggle.
 
-= What's the difference between the native &lt;details&gt; mode and the JS accordion? =
+= How does collapsible mode work? =
 
-Native mode uses the browser's built-in `<details>`/`<summary>` disclosure element. Zero JavaScript ships to the page, native keyboard accessibility, native screen-reader semantics. Recommended for new blocks. The JS accordion is the v2.x implementation: a `<button>` with `aria-expanded`/`aria-controls` toggled by a small (~0.5 KB) script. Both are accessible; the native variant is simpler and lighter. Existing v2.x blocks stay on the JS accordion to preserve their current behavior after upgrade.
+Collapsible mode uses the browser's built-in `<details>`/`<summary>` disclosure element. Zero JavaScript ships to the page, native keyboard accessibility, native screen-reader semantics. Open/close, focus handling, and assistive-tech announcements are all handled by the browser. Earlier versions of this plugin (v2.x and v3.0.0) shipped an optional JS-button accordion; from v3.0.1 onward, native `<details>` is the only collapsible implementation.
 
 = Why use a `<dl>` (definition list)? =
 
@@ -105,7 +90,7 @@ A definition list is the most semantically appropriate native HTML structure for
 
 = Does the collapsible mode work without JavaScript? =
 
-The collapsible/accordion behavior requires JavaScript to toggle visibility. If JavaScript is disabled, collapsible mode degrades gracefully: answers remain visible (because hidden state is set in HTML, but content is still in the DOM and the `hidden` attribute keeps it accessible to assistive tech that respects it). For maximum no-JS accessibility, leave collapsible mode off — all answers are always visible and fully indexable.
+Yes. Collapsible mode uses the browser's native `<details>`/`<summary>` element, which handles open/close without any scripting. If JavaScript is disabled, every answer is still expandable by clicking its question, and all content remains in the DOM and indexable by search engines.
 
 = Can I have multiple FAQ blocks on the same page? =
 
@@ -118,6 +103,11 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 3. Frontend output: theme-inheriting, semantic, accessible.
 
 == Changelog ==
+
+= 3.0.1 =
+* **Collapsible mode now always uses native `<details>`/`<summary>`.** The "Use native <details> element" sub-toggle introduced in 3.0.0 has been removed — every collapsible block renders with the browser's native disclosure element, no JavaScript. The legacy `<button>` + `aria-expanded` accordion implementation has been retired.
+* **Schema toggle moved into the FAQ settings panel.** "Enable FAQ schema (JSON-LD)" now lives alongside the title heading and collapsible toggles in the Inspector sidebar's **FAQ settings** panel, instead of in its own collapsed **Schema** panel where it was easy to miss.
+* Removed the `useNativeDetails` attribute, the `faq-toggle.js` frontend script, and the JS-accordion CSS path. Existing collapsible blocks that were saved with the JS-button variant now render with native `<details>` markup. Visual behavior matches the 3.0.0 native variant; the marker (+/−), focus ring, and borders are unchanged.
 
 = 3.0.0 =
 * **FAQPage JSON-LD schema is now opt-in.** Off by default for newly inserted blocks. Toggle on per block via the new **Schema** panel in the Inspector sidebar. Existing v2.x blocks continue to emit schema on upgrade (their behavior is preserved); the new default applies to new blocks only. Context: Google removed FAQ rich results from Search on 7 May 2026.
@@ -150,6 +140,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 * Initial release.
 
 == Upgrade Notice ==
+
+= 3.0.1 =
+Collapsible blocks now always use the browser's native `<details>` element — the JS-button accordion path and its sub-toggle have been removed. The FAQ schema toggle moves into the main FAQ settings panel for better discoverability. No editor action is required; existing collapsible blocks transition automatically.
 
 = 3.0.0 =
 FAQPage JSON-LD schema is now opt-in (off by default) for newly inserted blocks. Existing FAQ blocks keep emitting schema after the upgrade — no action needed. New collapsible blocks now use native `<details>`/`<summary>` markup by default (zero JavaScript). Existing collapsible blocks keep the v2.x JS accordion until manually switched.

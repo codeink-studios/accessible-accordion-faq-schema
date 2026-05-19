@@ -3,7 +3,7 @@
  * Plugin Name:       Accessible Accordion Block with FAQ Schema
  * Plugin URI:        https://github.com/codeink-studios/accessible-accordion-faq-schema
  * Description:       Gutenberg block for accessible FAQ accordions with optional FAQPage JSON-LD schema. Theme-inheriting, no dependencies, no external services.
- * Version:           3.0.0
+ * Version:           3.0.1
  * Requires at least: 6.3
  * Requires PHP:      7.4
  * Author:            CodeInk Studios
@@ -18,17 +18,14 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CIS_AAFS_VERSION', '3.0.0' );
+define( 'CIS_AAFS_VERSION', '3.0.1' );
 define( 'CIS_AAFS_FILE', __FILE__ );
 define( 'CIS_AAFS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CIS_AAFS_URL', plugin_dir_url( __FILE__ ) );
 
 /**
- * Register block + frontend script.
- *
- * Frontend script is registered (not enqueued) so render.php can enqueue it
- * only when at least one block instance uses the collapsible option. Pages
- * with non-collapsible FAQ blocks ship zero JavaScript.
+ * Register both blocks. Collapsible mode uses the browser's native
+ * <details>/<summary> element so no frontend JavaScript is ever shipped.
  *
  * @since 1.0.0
  * @return void
@@ -40,17 +37,6 @@ function cis_aafs_register() {
 	// Child block (one Q/A pair). Parent restriction is declared in its
 	// block.json — it can only be inserted inside the parent.
 	register_block_type( CIS_AAFS_DIR . 'src/faq-item' );
-
-	wp_register_script(
-		'cis-aafs-toggle',
-		CIS_AAFS_URL . 'src/faq-block/faq-toggle.js',
-		array(),
-		CIS_AAFS_VERSION,
-		array(
-			'in_footer' => true,
-			'strategy'  => 'defer',
-		)
-	);
 }
 add_action( 'init', 'cis_aafs_register' );
 

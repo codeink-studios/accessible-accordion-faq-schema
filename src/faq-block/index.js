@@ -55,16 +55,15 @@
 				titleLevel = 2;
 			}
 			var collapsible      = !! attributes.collapsible;
-			var useNativeDetails = !! attributes.useNativeDetails;
 			var enableSchema     = !! attributes.enableSchema;
 			var blockVersion     = parseInt( attributes.blockVersion, 10 ) || 0;
 			var anchor           = ( typeof attributes.anchor === 'string' ) ? attributes.anchor : '';
 
-			// One-time migration: write blockVersion + the appropriate defaults
-			// the first time a block is loaded under v3.x. A legacy v2.x block
-			// is detected by having at least one inner cis/faq-item whose
-			// `question` attribute is non-empty (a fresh insert has only the
-			// template-stub child with an empty question).
+			// One-time migration: write blockVersion + preserve legacy schema
+			// behavior the first time a block is loaded under v3.x. A legacy
+			// v2.x block is detected by having at least one inner cis/faq-item
+			// whose `question` attribute is non-empty (a fresh insert has only
+			// the template-stub child with an empty question).
 			useEffect( function () {
 				if ( blockVersion >= BLOCK_VERSION ) {
 					return;
@@ -76,18 +75,16 @@
 					return typeof q === 'string' && q.trim() !== '';
 				} );
 				if ( hasLegacyContent ) {
-					// v2.x block opened in v3 editor — preserve old behavior.
+					// v2.x block opened in v3 editor — preserve schema-on.
 					setAttributes( {
-						blockVersion:     BLOCK_VERSION,
-						enableSchema:     true,
-						useNativeDetails: false,
+						blockVersion: BLOCK_VERSION,
+						enableSchema: true,
 					} );
 				} else {
 					// Fresh v3 insert — apply v3 defaults.
 					setAttributes( {
-						blockVersion:     BLOCK_VERSION,
-						enableSchema:     false,
-						useNativeDetails: true,
+						blockVersion: BLOCK_VERSION,
+						enableSchema: false,
 					} );
 				}
 			}, [] );
@@ -124,9 +121,7 @@
 					el( ToggleControl, {
 						label: __( 'Collapsible (accordion)', 'accessible-accordion-faq-schema' ),
 						help: collapsible
-							? ( useNativeDetails
-								? __( 'Each answer is hidden until its question is clicked. Uses the browser’s native disclosure element. No JavaScript loaded.', 'accessible-accordion-faq-schema' )
-								: __( 'Each answer is hidden until its question is clicked. A small script (~0.5KB) loads on the page.', 'accessible-accordion-faq-schema' ) )
+							? __( 'Each answer is hidden until its question is clicked. Uses the browser’s native <details> element. No JavaScript loaded.', 'accessible-accordion-faq-schema' )
 							: __( 'All answers are visible. No JavaScript is loaded.', 'accessible-accordion-faq-schema' ),
 						checked: collapsible,
 						onChange: function ( val ) {
@@ -134,21 +129,6 @@
 						},
 						__nextHasNoMarginBottom: true,
 					} ),
-					collapsible
-						? el( ToggleControl, {
-							label: __( 'Use native <details> element', 'accessible-accordion-faq-schema' ),
-							help: __( 'Uses the browser’s native disclosure element instead of a custom toggle script. Zero JavaScript, fully accessible by default. Recommended for new sites.', 'accessible-accordion-faq-schema' ),
-							checked: useNativeDetails,
-							onChange: function ( val ) {
-								setAttributes( { useNativeDetails: !! val } );
-							},
-							__nextHasNoMarginBottom: true,
-						} )
-						: null
-				),
-				el(
-					PanelBody,
-					{ title: __( 'Schema', 'accessible-accordion-faq-schema' ), initialOpen: false },
 					el( ToggleControl, {
 						label: __( 'Enable FAQ schema (JSON-LD)', 'accessible-accordion-faq-schema' ),
 						help: enableSchema
