@@ -2,9 +2,14 @@
 /**
  * Server-side render for cis/faq-item.
  *
- * Outputs a <dt>/<dd> pair. When the parent's `collapsible` context is true,
- * the question is wrapped in a <button> with the full ARIA wiring; otherwise
- * it's emitted as plain text inside the <dt>.
+ * Three output modes, selected by parent block context:
+ *
+ *   1. Open (collapsible context = false): <dt>/<dd> pair, no toggle.
+ *   2. Native details (collapsible + useNativeDetails context both true):
+ *      <details>/<summary> + answer wrapper. Zero JavaScript.
+ *   3. JS accordion (collapsible = true, useNativeDetails = false): <dt> with
+ *      <button> + ARIA wiring + hidden <dd>. Toggled by the parent block's
+ *      enqueued frontend script.
  *
  * Available variables (provided by WP_Block::render):
  *
@@ -33,15 +38,18 @@ if ( '' === $cis_aafs_item_q && '' === trim( wp_strip_all_tags( (string) $conten
 
 $cis_aafs_item_collapsible = isset( $block->context['cis/accessible-accordion-faq/collapsible'] )
 	&& $block->context['cis/accessible-accordion-faq/collapsible'];
+$cis_aafs_item_native      = isset( $block->context['cis/accessible-accordion-faq/useNativeDetails'] )
+	&& $block->context['cis/accessible-accordion-faq/useNativeDetails'];
 
 // --------------------------------------------------------------------------
-// 2. Build per-instance IDs for ARIA wiring (collapsible mode only).
+// 2. Build per-instance IDs for ARIA wiring (JS-accordion mode only).
 //
-// Uses a per-request static counter to guarantee uniqueness across all
-// instances on the page (including multiple parent blocks).
+// Native <details> mode doesn't need them: the browser ties the summary to
+// its parent details element via the DOM. Uses a per-request global counter
+// to guarantee uniqueness across all instances on the page.
 // --------------------------------------------------------------------------
 
-if ( $cis_aafs_item_collapsible ) {
+if ( $cis_aafs_item_collapsible && ! $cis_aafs_item_native ) {
 	// `static` is function-scoped in PHP and we're at script top-level here
 	// (this file is required by WP_Block::render). Use a global instead.
 	global $cis_aafs_item_counter;
@@ -78,7 +86,20 @@ $cis_aafs_item_q_html = wp_kses( $cis_aafs_item_q, $cis_aafs_item_q_allowed );
 // 4. Render.
 // --------------------------------------------------------------------------
 
-if ( $cis_aafs_item_collapsible ) :
+if ( $cis_aafs_item_collapsible && $cis_aafs_item_native ) :
+	// Mode: Native <details>/<summary>. Zero JS. Parent renders a <div> list
+	// wrapper (not <dl>) in this mode so <details> is valid HTML.
+	?>
+<details class="cis_accordion__item">
+	<summary class="cis_accordion__question"><?php echo $cis_aafs_item_q_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses() output above. ?></summary>
+	<div class="cis_accordion__answer">
+		<?php echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output of WP inner blocks (escape at their boundaries). ?>
+	</div>
+</details>
+	<?php
+elseif ( $cis_aafs_item_collapsible ) :
+	// Mode: Legacy JS-accordion. <button> trigger with full ARIA wiring,
+	// hidden <dd> answer revealed by the enqueued toggle script.
 	?>
 <dt class="cis_accordion__question">
 	<button
@@ -102,6 +123,7 @@ if ( $cis_aafs_item_collapsible ) :
 </dd>
 	<?php
 else :
+	// Mode: Open. Plain <dt>/<dd>, all answers visible.
 	?>
 <dt class="cis_accordion__question"><?php echo $cis_aafs_item_q_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses() output above. ?></dt>
 <dd class="cis_accordion__answer"><?php echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output of WP inner blocks (escape at their boundaries). ?></dd>

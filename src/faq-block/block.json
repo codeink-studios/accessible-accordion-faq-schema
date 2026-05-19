@@ -2,11 +2,11 @@
 	"$schema": "https://schemas.wp.org/trunk/block.json",
 	"apiVersion": 3,
 	"name": "cis/accessible-accordion-faq",
-	"version": "2.0.1",
+	"version": "3.0.0",
 	"title": "Accessible FAQ Accordion",
 	"category": "text",
 	"icon": "editor-help",
-	"description": "Accessible FAQ accordion with FAQPage JSON-LD schema. Theme-inheriting, no dependencies.",
+	"description": "Accessible FAQ accordion with optional FAQPage JSON-LD schema. Theme-inheriting, no dependencies.",
 	"keywords": [ "faq", "accordion", "schema", "questions", "answers" ],
 	"textdomain": "accessible-accordion-faq-schema",
 	"supports": {
@@ -39,13 +39,26 @@
 			"type": "boolean",
 			"default": false
 		},
+		"useNativeDetails": {
+			"type": "boolean",
+			"default": false
+		},
+		"enableSchema": {
+			"type": "boolean",
+			"default": false
+		},
+		"blockVersion": {
+			"type": "number",
+			"default": 0
+		},
 		"anchor": {
 			"type": "string",
 			"default": ""
 		}
 	},
 	"providesContext": {
-		"cis/accessible-accordion-faq/collapsible": "collapsible"
+		"cis/accessible-accordion-faq/collapsible": "collapsible",
+		"cis/accessible-accordion-faq/useNativeDetails": "useNativeDetails"
 	},
 	"example": {
 		"attributes": {

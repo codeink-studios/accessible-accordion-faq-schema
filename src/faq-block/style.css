@@ -163,3 +163,82 @@
 	outline: 2px solid currentColor;
 	outline-offset: 2px;
 }
+
+/* -------------------------------------------------------------------------
+ * Native <details> variant
+ *
+ * Markup differs from the JS-button variant: the list wrapper is a <div>
+ * (not <dl>) and each item is <details><summary>question</summary>
+ * <div class="cis_accordion__answer">answer</div></details>. The visual
+ * intent matches the JS variant — border-top on the list, border-bottom on
+ * each item, +/− marker, focus ring — but with zero JavaScript.
+ * ---------------------------------------------------------------------- */
+
+.cis_accordion--native .cis_accordion__list {
+	border-top: 1px solid currentColor;
+	border-color: rgba(0, 0, 0, 0.12);
+}
+
+.cis_accordion--native .cis_accordion__item {
+	border-bottom: 1px solid currentColor;
+	border-color: rgba(0, 0, 0, 0.12);
+}
+
+.cis_accordion--native .cis_accordion__question {
+	margin: 0;
+	padding: var(--wp--preset--spacing--30, 0.75rem) 0;
+	font-weight: 600;
+	cursor: pointer;
+	list-style: none; /* Hide the default disclosure triangle. */
+
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75em;
+}
+
+/* Safari (legacy) puts the disclosure triangle in ::-webkit-details-marker
+ * rather than respecting list-style on summary. Hide it explicitly. */
+.cis_accordion--native .cis_accordion__question::-webkit-details-marker {
+	display: none;
+}
+
+.cis_accordion--native .cis_accordion__question::after {
+	content: "+";
+	flex-shrink: 0;
+	line-height: 1;
+	font-size: 1em;
+	font-weight: 400;
+	speak: none;
+}
+
+.cis_accordion--native .cis_accordion__item[open] > .cis_accordion__question::after {
+	content: "\2212"; /* Unicode minus */
+}
+
+.cis_accordion--native .cis_accordion__question:focus {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+.cis_accordion--native .cis_accordion__question:focus:not(:focus-visible) {
+	outline: none;
+}
+
+.cis_accordion--native .cis_accordion__question:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+.cis_accordion--native .cis_accordion__answer {
+	margin: 0;
+	padding: 0 0 var(--wp--preset--spacing--30, 0.75rem);
+}
+
+.cis_accordion--native .cis_accordion__answer > :first-child {
+	margin-top: 0;
+}
+
+.cis_accordion--native .cis_accordion__answer > :last-child {
+	margin-bottom: 0;
+}

@@ -27,7 +27,14 @@
 	var TextControl               = wp.components.TextControl;
 	var el                        = wp.element.createElement;
 	var Fragment                  = wp.element.Fragment;
+	var useEffect                 = wp.element.useEffect;
+	var select                    = wp.data.select;
 	var __                        = wp.i18n.__;
+
+	// Current block schema version. Bumped when attribute defaults change in
+	// ways that would silently regress existing posts. See migration logic in
+	// the parent block's edit() and parent render.php.
+	var BLOCK_VERSION = 3;
 
 	// -----------------------------------------------------------------------
 	// Parent block: cis/accessible-accordion-faq
@@ -40,14 +47,50 @@
 		edit: function ( props ) {
 			var attributes    = props.attributes;
 			var setAttributes = props.setAttributes;
+			var clientId      = props.clientId;
 
 			var title       = attributes.title || '';
 			var titleLevel  = parseInt( attributes.titleLevel, 10 );
 			if ( isNaN( titleLevel ) || titleLevel < 2 || titleLevel > 6 ) {
 				titleLevel = 2;
 			}
-			var collapsible = !! attributes.collapsible;
-			var anchor      = ( typeof attributes.anchor === 'string' ) ? attributes.anchor : '';
+			var collapsible      = !! attributes.collapsible;
+			var useNativeDetails = !! attributes.useNativeDetails;
+			var enableSchema     = !! attributes.enableSchema;
+			var blockVersion     = parseInt( attributes.blockVersion, 10 ) || 0;
+			var anchor           = ( typeof attributes.anchor === 'string' ) ? attributes.anchor : '';
+
+			// One-time migration: write blockVersion + the appropriate defaults
+			// the first time a block is loaded under v3.x. A legacy v2.x block
+			// is detected by having at least one inner cis/faq-item whose
+			// `question` attribute is non-empty (a fresh insert has only the
+			// template-stub child with an empty question).
+			useEffect( function () {
+				if ( blockVersion >= BLOCK_VERSION ) {
+					return;
+				}
+				var blockData = select( 'core/block-editor' ).getBlock( clientId );
+				var innerBlocks = ( blockData && blockData.innerBlocks ) || [];
+				var hasLegacyContent = innerBlocks.some( function ( item ) {
+					var q = item && item.attributes && item.attributes.question;
+					return typeof q === 'string' && q.trim() !== '';
+				} );
+				if ( hasLegacyContent ) {
+					// v2.x block opened in v3 editor — preserve old behavior.
+					setAttributes( {
+						blockVersion:     BLOCK_VERSION,
+						enableSchema:     true,
+						useNativeDetails: false,
+					} );
+				} else {
+					// Fresh v3 insert — apply v3 defaults.
+					setAttributes( {
+						blockVersion:     BLOCK_VERSION,
+						enableSchema:     false,
+						useNativeDetails: true,
+					} );
+				}
+			}, [] );
 
 			var blockProps = useBlockProps( {
 				className: 'cis_accordion-editor' + ( collapsible ? ' is-collapsible' : '' ),
@@ -81,23 +124,42 @@
 					el( ToggleControl, {
 						label: __( 'Collapsible (accordion)', 'accessible-accordion-faq-schema' ),
 						help: collapsible
-							? __( 'Each answer is hidden until its question is clicked. A small script (~0.5KB) loads on the page.', 'accessible-accordion-faq-schema' )
+							? ( useNativeDetails
+								? __( 'Each answer is hidden until its question is clicked. Uses the browser’s native disclosure element. No JavaScript loaded.', 'accessible-accordion-faq-schema' )
+								: __( 'Each answer is hidden until its question is clicked. A small script (~0.5KB) loads on the page.', 'accessible-accordion-faq-schema' ) )
 							: __( 'All answers are visible. No JavaScript is loaded.', 'accessible-accordion-faq-schema' ),
 						checked: collapsible,
 						onChange: function ( val ) {
 							setAttributes( { collapsible: !! val } );
 						},
 						__nextHasNoMarginBottom: true,
-					} )
+					} ),
+					collapsible
+						? el( ToggleControl, {
+							label: __( 'Use native <details> element', 'accessible-accordion-faq-schema' ),
+							help: __( 'Uses the browser’s native disclosure element instead of a custom toggle script. Zero JavaScript, fully accessible by default. Recommended for new sites.', 'accessible-accordion-faq-schema' ),
+							checked: useNativeDetails,
+							onChange: function ( val ) {
+								setAttributes( { useNativeDetails: !! val } );
+							},
+							__nextHasNoMarginBottom: true,
+						} )
+						: null
 				),
 				el(
 					PanelBody,
-					{ title: __( 'Schema & linking', 'accessible-accordion-faq-schema' ), initialOpen: false },
-					el(
-						'p',
-						{ style: { margin: 0, fontSize: '12px' } },
-						__( 'FAQPage JSON-LD schema is generated automatically. The wrapper id defaults to "faq". Customize via the HTML anchor field in the Advanced panel below.', 'accessible-accordion-faq-schema' )
-					)
+					{ title: __( 'Schema', 'accessible-accordion-faq-schema' ), initialOpen: false },
+					el( ToggleControl, {
+						label: __( 'Enable FAQ schema (JSON-LD)', 'accessible-accordion-faq-schema' ),
+						help: enableSchema
+							? __( 'A FAQPage JSON-LD block will be added to this page. Use only when this FAQ block is the primary content of the page, or to give AI search engines structured Q/A signal.', 'accessible-accordion-faq-schema' )
+							: __( 'Off by default. Google removed FAQ rich results in May 2026, but the markup remains valid structured data and is still consumed by Bing and AI search surfaces. Turn on when this FAQ is the primary content of the page.', 'accessible-accordion-faq-schema' ),
+						checked: enableSchema,
+						onChange: function ( val ) {
+							setAttributes( { enableSchema: !! val } );
+						},
+						__nextHasNoMarginBottom: true,
+					} )
 				)
 			);
 
