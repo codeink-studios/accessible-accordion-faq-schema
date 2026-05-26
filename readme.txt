@@ -4,7 +4,7 @@ Tags: faq, accordion, schema, gutenberg, accessibility
 Requires at least: 6.3
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 3.0.1
+Stable tag: 3.0.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -104,6 +104,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 
 == Changelog ==
 
+= 3.0.2 =
+* **Fixed: frontend stylesheet leaking onto pages that don't contain the block.** The stylesheet was declared via `style` in `block.json`, which classic themes can enqueue globally instead of render-conditionally. Switched to `wp_enqueue_block_style()` so the CSS is only emitted on pages where the Accessible FAQ Accordion block actually renders.
+
 = 3.0.1 =
 * **Collapsible mode now always uses native `<details>`/`<summary>`.** The "Use native <details> element" sub-toggle introduced in 3.0.0 has been removed — every collapsible block renders with the browser's native disclosure element, no JavaScript. The legacy `<button>` + `aria-expanded` accordion implementation has been retired.
 * **Schema toggle moved into the FAQ settings panel.** "Enable FAQ schema (JSON-LD)" now lives alongside the title heading and collapsible toggles in the Inspector sidebar's **FAQ settings** panel, instead of in its own collapsed **Schema** panel where it was easy to miss.
@@ -140,6 +143,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 * Initial release.
 
 == Upgrade Notice ==
+
+= 3.0.2 =
+Fixes the frontend stylesheet loading on every page of the site. The CSS now only enqueues on pages that actually contain the Accessible FAQ Accordion block. No editor action required.
 
 = 3.0.1 =
 Collapsible blocks now always use the browser's native `<details>` element — the JS-button accordion path and its sub-toggle have been removed. The FAQ schema toggle moves into the main FAQ settings panel for better discoverability. No editor action is required; existing collapsible blocks transition automatically.

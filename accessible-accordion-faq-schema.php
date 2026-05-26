@@ -3,7 +3,7 @@
  * Plugin Name:       Accessible Accordion Block with FAQ Schema
  * Plugin URI:        https://github.com/codeink-studios/accessible-accordion-faq-schema
  * Description:       Gutenberg block for accessible FAQ accordions with optional FAQPage JSON-LD schema. Theme-inheriting, no dependencies, no external services.
- * Version:           3.0.1
+ * Version:           3.0.2
  * Requires at least: 6.3
  * Requires PHP:      7.4
  * Author:            CodeInk Studios
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CIS_AAFS_VERSION', '3.0.1' );
+define( 'CIS_AAFS_VERSION', '3.0.2' );
 define( 'CIS_AAFS_FILE', __FILE__ );
 define( 'CIS_AAFS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CIS_AAFS_URL', plugin_dir_url( __FILE__ ) );
@@ -37,6 +37,20 @@ function cis_aafs_register() {
 	// Child block (one Q/A pair). Parent restriction is declared in its
 	// block.json — it can only be inserted inside the parent.
 	register_block_type( CIS_AAFS_DIR . 'src/faq-item' );
+
+	// Attach the frontend stylesheet to the parent block via the per-block
+	// conditional API. wp_enqueue_block_style() guarantees the stylesheet is
+	// only emitted on pages where the block actually renders — unlike a
+	// "style" entry in block.json, which classic themes can leak globally.
+	wp_enqueue_block_style(
+		'cis/accessible-accordion-faq',
+		array(
+			'handle' => 'cis-aafs-style',
+			'src'    => CIS_AAFS_URL . 'src/faq-block/style.css',
+			'path'   => CIS_AAFS_DIR . 'src/faq-block/style.css',
+			'ver'    => CIS_AAFS_VERSION,
+		)
+	);
 }
 add_action( 'init', 'cis_aafs_register' );
 
