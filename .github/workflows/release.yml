@@ -28,7 +28,8 @@ jobs:
             -x "accessible-accordion-faq-schema/.gitignore" \
             -x "accessible-accordion-faq-schema/.DS_Store" \
             -x "accessible-accordion-faq-schema/**/.DS_Store" \
-            -x "accessible-accordion-faq-schema/*.zip"
+            -x "accessible-accordion-faq-schema/*.zip" \
+            -x "accessible-accordion-faq-schema/specs/*"
 
       - name: Create GitHub Release
         env:

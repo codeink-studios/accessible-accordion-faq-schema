@@ -3,7 +3,7 @@
  * Plugin Name:       Accessible Accordion Block with FAQ Schema
  * Plugin URI:        https://github.com/codeink-studios/accessible-accordion-faq-schema
  * Description:       Gutenberg block for accessible FAQ accordions with optional FAQPage JSON-LD schema. Theme-inheriting, no dependencies, no external services.
- * Version:           3.0.2
+ * Version:           3.0.3
  * Requires at least: 6.3
  * Requires PHP:      7.4
  * Author:            CodeInk Studios
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CIS_AAFS_VERSION', '3.0.2' );
+define( 'CIS_AAFS_VERSION', '3.0.3' );
 define( 'CIS_AAFS_FILE', __FILE__ );
 define( 'CIS_AAFS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CIS_AAFS_URL', plugin_dir_url( __FILE__ ) );
@@ -38,19 +38,27 @@ function cis_aafs_register() {
 	// block.json — it can only be inserted inside the parent.
 	register_block_type( CIS_AAFS_DIR . 'src/faq-item' );
 
-	// Attach the frontend stylesheet to the parent block via the per-block
-	// conditional API. wp_enqueue_block_style() guarantees the stylesheet is
-	// only emitted on pages where the block actually renders — unlike a
-	// "style" entry in block.json, which classic themes can leak globally.
-	wp_enqueue_block_style(
-		'cis/accessible-accordion-faq',
-		array(
-			'handle' => 'cis-aafs-style',
-			'src'    => CIS_AAFS_URL . 'src/faq-block/style.css',
-			'path'   => CIS_AAFS_DIR . 'src/faq-block/style.css',
-			'ver'    => CIS_AAFS_VERSION,
-		)
+	// Register — but do NOT enqueue — the frontend stylesheet. The parent
+	// block's render.php enqueues it, which is the only reliable way to emit
+	// it exclusively on pages where the block actually appears.
+	//
+	// wp_enqueue_block_style() is deliberately not used here. It only routes
+	// through the render_block filter when wp_should_load_block_assets_on_demand()
+	// is true, which defaults to wp_should_load_separate_core_block_assets() —
+	// false on classic themes. On those sites core silently falls back to a
+	// plain site-wide wp_enqueue_scripts action, so the stylesheet loaded on
+	// every page. That was the v3.0.2 leak this replaces.
+	wp_register_style(
+		'cis-aafs-style',
+		CIS_AAFS_URL . 'src/faq-block/style.css',
+		array(),
+		CIS_AAFS_VERSION
 	);
+
+	// Lets core inline the stylesheet instead of emitting a blocking <link>.
+	// wp_maybe_inline_styles() runs on wp_footer priority 1 precisely to catch
+	// late-enqueued styles like ours.
+	wp_style_add_data( 'cis-aafs-style', 'path', CIS_AAFS_DIR . 'src/faq-block/style.css' );
 }
 add_action( 'init', 'cis_aafs_register' );
 

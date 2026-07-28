@@ -4,7 +4,7 @@ Tags: faq, accordion, schema, gutenberg, accessibility
 Requires at least: 6.3
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 3.0.2
+Stable tag: 3.0.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -104,6 +104,10 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 
 == Changelog ==
 
+= 3.0.3 =
+* **Fixed: the frontend stylesheet still loaded on every page of classic-theme sites.** The 3.0.2 fix did not hold. `wp_enqueue_block_style()` only loads a stylesheet conditionally when WordPress is loading block assets on demand — which is off by default on classic (non-block) themes. On those sites WordPress fell back to a site-wide enqueue, so the CSS shipped on every page exactly as it did before 3.0.2. The stylesheet is now registered on `init` and enqueued from the block's own render callback, so it can only ever load on a page that actually contains the block. Block-theme sites are unaffected either way.
+* The stylesheet now loads in the footer rather than the document head. WordPress inlines it automatically, so there is no additional request and no visual change.
+
 = 3.0.2 =
 * **Fixed: frontend stylesheet leaking onto pages that don't contain the block.** The stylesheet was declared via `style` in `block.json`, which classic themes can enqueue globally instead of render-conditionally. Switched to `wp_enqueue_block_style()` so the CSS is only emitted on pages where the Accessible FAQ Accordion block actually renders.
 
@@ -143,6 +147,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 * Initial release.
 
 == Upgrade Notice ==
+
+= 3.0.3 =
+Completes the fix 3.0.2 attempted. On classic (non-block) themes the stylesheet was still loading on every page of the site; it now loads only on pages that contain the block. Recommended for anyone running a classic theme. No editor action required.
 
 = 3.0.2 =
 Fixes the frontend stylesheet loading on every page of the site. The CSS now only enqueues on pages that actually contain the Accessible FAQ Accordion block. No editor action required.

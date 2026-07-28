@@ -110,6 +110,12 @@ if ( ! $cis_aafs_has_complete ) {
 	return '';
 }
 
+// Enqueue the frontend stylesheet here rather than on wp_enqueue_scripts. This
+// file only executes when the block is actually on the page and has something
+// to show, so the CSS never loads anywhere else. Registered in
+// cis_aafs_register(); core prints late-enqueued styles in the footer.
+wp_enqueue_style( 'cis-aafs-style' );
+
 // ---------------------------------------------------------------------------
 // 3. Build wrapper attributes (merges in block supports: color, spacing, etc.)
 // then deterministically prepend our id.
