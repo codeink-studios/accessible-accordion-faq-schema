@@ -4,7 +4,7 @@ Tags: faq, accordion, schema, gutenberg, accessibility
 Requires at least: 6.3
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 3.0.3
+Stable tag: 3.1.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -104,6 +104,12 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 
 == Changelog ==
 
+= 3.1.0 =
+* **Fixed: FAQ blocks created in v1.x lost all their content when the site upgraded to v2.0.0 or later.** v1.x stored every question and answer in a single `faqs` block attribute with no child blocks. v2.0.0 restructured the block to use inner blocks but shipped no migration, so from v2 onward that data was never read: the FAQ disappeared from the front end, and the block appeared empty in the editor. The content itself was never deleted — it stayed in the post — but it was permanently lost the first time an affected post was opened and saved.
+* **Recovery is automatic and requires no editing.** The front end now reads legacy v1.x data directly, so affected FAQs reappear on your site as soon as you update, without opening a single post. Opening an affected post in the editor converts it permanently to the current block structure, preserving the section title, heading level, collapsible setting, HTML anchor, and every question and answer. Recovered FAQs keep JSON-LD schema enabled, matching v1 behaviour.
+* Recovered FAQs render with the current markup — native `<details>`/`<summary>` in collapsible mode — rather than the retired v1 JavaScript accordion.
+* Bumped the editor script's cache-busting version, which had been stale since 3.0.1. Without this, browsers could keep serving an old editor script and skip the recovery.
+
 = 3.0.3 =
 * **Fixed: the frontend stylesheet still loaded on every page of classic-theme sites.** The 3.0.2 fix did not hold. `wp_enqueue_block_style()` only loads a stylesheet conditionally when WordPress is loading block assets on demand — which is off by default on classic (non-block) themes. On those sites WordPress fell back to a site-wide enqueue, so the CSS shipped on every page exactly as it did before 3.0.2. The stylesheet is now registered on `init` and enqueued from the block's own render callback, so it can only ever load on a page that actually contains the block. Block-theme sites are unaffected either way.
 * The stylesheet now loads in the footer rather than the document head. WordPress inlines it automatically, so there is no additional request and no visual change.
@@ -147,6 +153,9 @@ Yes. By default each block gets the anchor `#faq`. If you have more than one blo
 * Initial release.
 
 == Upgrade Notice ==
+
+= 3.1.0 =
+Recovers FAQ blocks created in v1.x, which lost their content when the site upgraded to v2.0.0 or later. Affected FAQs reappear on the front end immediately after updating — no post editing required. Strongly recommended if you have used this plugin since before v2.0.0. Update before opening affected posts in the editor.
 
 = 3.0.3 =
 Completes the fix 3.0.2 attempted. On classic (non-block) themes the stylesheet was still loading on every page of the site; it now loads only on pages that contain the block. Recommended for anyone running a classic theme. No editor action required.

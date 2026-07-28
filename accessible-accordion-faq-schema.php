@@ -3,7 +3,7 @@
  * Plugin Name:       Accessible Accordion Block with FAQ Schema
  * Plugin URI:        https://github.com/codeink-studios/accessible-accordion-faq-schema
  * Description:       Gutenberg block for accessible FAQ accordions with optional FAQPage JSON-LD schema. Theme-inheriting, no dependencies, no external services.
- * Version:           3.0.3
+ * Version:           3.1.0
  * Requires at least: 6.3
  * Requires PHP:      7.4
  * Author:            CodeInk Studios
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CIS_AAFS_VERSION', '3.0.3' );
+define( 'CIS_AAFS_VERSION', '3.1.0' );
 define( 'CIS_AAFS_FILE', __FILE__ );
 define( 'CIS_AAFS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CIS_AAFS_URL', plugin_dir_url( __FILE__ ) );
@@ -61,6 +61,137 @@ function cis_aafs_register() {
 	wp_style_add_data( 'cis-aafs-style', 'path', CIS_AAFS_DIR . 'src/faq-block/style.css' );
 }
 add_action( 'init', 'cis_aafs_register' );
+
+/**
+ * Normalize a legacy v1.x `faqs` attribute into a predictable shape.
+ *
+ * v1.x kept every Q/A pair in a single `faqs` array attribute on the parent
+ * block; there were no child blocks. v2.0.0 moved to InnerBlocks children
+ * without shipping a migration, so from v2 onward this data was never read
+ * and the FAQ rendered as nothing. This lets the front end recover it without
+ * anyone having to open and re-save the post.
+ *
+ * Two answer shapes exist in the wild: a single string (v1.0.x) and an array
+ * of paragraph strings (v1.1.0+). Both are accepted, matching the v1 renderer.
+ *
+ * @since 3.1.0
+ * @param mixed $faqs Raw `faqs` attribute value.
+ * @return array List of array{question:string, paragraphs:string[]}.
+ */
+function cis_aafs_normalize_legacy_faqs( $faqs ) {
+	$normalized = array();
+
+	if ( ! is_array( $faqs ) ) {
+		return $normalized;
+	}
+
+	foreach ( $faqs as $faq ) {
+		if ( ! is_array( $faq ) ) {
+			continue;
+		}
+
+		$question = isset( $faq['question'] ) && is_string( $faq['question'] )
+			? trim( $faq['question'] )
+			: '';
+		if ( '' === $question ) {
+			continue;
+		}
+
+		$paragraphs = array();
+		if ( isset( $faq['answer'] ) ) {
+			if ( is_array( $faq['answer'] ) ) {
+				foreach ( $faq['answer'] as $para ) {
+					if ( is_string( $para ) ) {
+						$paragraphs[] = $para;
+					}
+				}
+			} elseif ( is_string( $faq['answer'] ) ) {
+				$paragraphs[] = $faq['answer'];
+			}
+		}
+
+		$paragraphs = array_values(
+			array_filter(
+				array_map( 'trim', $paragraphs ),
+				static function ( $para ) {
+					return '' !== $para;
+				}
+			)
+		);
+
+		// v1 required both halves before it would render a row. Keep that.
+		if ( empty( $paragraphs ) ) {
+			continue;
+		}
+
+		$normalized[] = array(
+			'question'   => $question,
+			'paragraphs' => $paragraphs,
+		);
+	}
+
+	return $normalized;
+}
+
+/**
+ * Render legacy v1.x FAQ rows using the CURRENT markup.
+ *
+ * Deliberately emits the v3 structure rather than resurrecting the v1
+ * JS-button accordion, whose script was deleted in 3.0.1. Recovered content
+ * therefore looks and behaves like every other FAQ block on the site.
+ *
+ * Escaping mirrors the v1 renderer: a strict inline allowlist on questions,
+ * wp_kses_post() on answers, and a <p> wrapper only when the stored string is
+ * not already block-level.
+ *
+ * @since 3.1.0
+ * @param array $items       Output of cis_aafs_normalize_legacy_faqs().
+ * @param bool  $collapsible Whether the parent block is in collapsible mode.
+ * @return string HTML for the list body.
+ */
+function cis_aafs_render_legacy_items( $items, $collapsible ) {
+	$question_allowed = array(
+		'strong' => array(),
+		'b'      => array(),
+		'em'     => array(),
+		'i'      => array(),
+	);
+
+	$out = '';
+
+	foreach ( $items as $item ) {
+		$question_html = wp_kses( $item['question'], $question_allowed );
+
+		$answer_parts = array();
+		foreach ( $item['paragraphs'] as $para ) {
+			$para_html = wp_kses_post( $para );
+			if ( '' === $para_html ) {
+				continue;
+			}
+			if ( ! preg_match( '/^\s*<(p|ul|ol|div|blockquote|h[1-6])\b/i', $para_html ) ) {
+				$para_html = '<p>' . $para_html . '</p>';
+			}
+			$answer_parts[] = $para_html;
+		}
+		$answer_html = implode( "\n", $answer_parts );
+
+		if ( $collapsible ) {
+			$out .= sprintf(
+				'<details class="cis_accordion__item"><summary class="cis_accordion__question">%1$s</summary><div class="cis_accordion__answer">%2$s</div></details>',
+				$question_html,
+				$answer_html
+			);
+		} else {
+			$out .= sprintf(
+				'<dt class="cis_accordion__question">%1$s</dt><dd class="cis_accordion__answer">%2$s</dd>',
+				$question_html,
+				$answer_html
+			);
+		}
+	}
+
+	return $out;
+}
 
 /**
  * Load translations.

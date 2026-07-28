@@ -16,6 +16,7 @@
 	'use strict';
 
 	var registerBlockType         = wp.blocks.registerBlockType;
+	var createBlock               = wp.blocks.createBlock;
 	var useBlockProps             = wp.blockEditor.useBlockProps;
 	var InspectorControls         = wp.blockEditor.InspectorControls;
 	var InspectorAdvancedControls = wp.blockEditor.InspectorAdvancedControls;
@@ -42,6 +43,84 @@
 
 	var PARENT_ALLOWED  = [ 'cis/faq-item' ];
 	var PARENT_TEMPLATE = [ [ 'cis/faq-item' ] ];
+
+	// -----------------------------------------------------------------------
+	// Legacy v1.x rescue migration
+	//
+	// v1.x stored the entire FAQ in ONE self-closing block: every Q/A pair
+	// lived in a `faqs` array attribute and there were no child blocks at all.
+	// v2.0.0 restructured to parent + cis/faq-item InnerBlocks children and
+	// shipped no deprecation, so from v2 onward a v1 block matched nothing:
+	// render.php walks innerBlocks, finds none, and returns ''. The FAQ
+	// vanished from the front end while the data sat untouched in
+	// post_content — and was destroyed for good the first time an editor
+	// opened the post and saved it, because `faqs` is no longer a declared
+	// attribute and undeclared attributes are dropped on re-serialization.
+	//
+	// save() returns null across the whole v1 line, and InnerBlocks.Content
+	// over zero children also serializes to nothing, so these blocks parse as
+	// VALID against the current save. A normal deprecation would never fire.
+	// isEligible is the documented opt-in that lets a still-valid block
+	// migrate anyway; it receives the RAW attributes from the block comment,
+	// so `faqs` is visible here even though the current schema has no such key.
+	// -----------------------------------------------------------------------
+
+	var LEGACY_V1_ATTRIBUTES = {
+		title:       { type: 'string',  default: '' },
+		titleLevel:  { type: 'number',  default: 2 },
+		faqs:        { type: 'array',   default: [] },
+		collapsible: { type: 'boolean', default: false },
+		anchor:      { type: 'string',  default: '' },
+	};
+
+	/**
+	 * Normalize a v1 answer into an array of paragraph strings. v1.0.x stored
+	 * a single string; v1.1.0+ stored an array of strings. Both shapes appear
+	 * in the wild — the v1 render.php accepted either.
+	 *
+	 * @param {*} answer Raw legacy answer value.
+	 * @return {Array} Trimmed, non-empty paragraph strings.
+	 */
+	function legacyAnswerParagraphs( answer ) {
+		var out = [];
+		if ( Array.isArray( answer ) ) {
+			answer.forEach( function ( para ) {
+				if ( typeof para === 'string' && para.trim() !== '' ) {
+					out.push( para.trim() );
+				}
+			} );
+		} else if ( typeof answer === 'string' && answer.trim() !== '' ) {
+			out.push( answer.trim() );
+		}
+		return out;
+	}
+
+	/**
+	 * True only for a genuine un-migrated v1 block: legacy `faqs` data present,
+	 * carrying at least one real question or answer, and no child blocks yet.
+	 * Deliberately strict — a false positive here would clobber a working v2/v3
+	 * block's children.
+	 *
+	 * @param {Object} attributes  Raw parsed block-comment attributes.
+	 * @param {Array}  innerBlocks Currently parsed inner blocks.
+	 * @return {boolean} Whether the legacy migration should run.
+	 */
+	function hasLegacyFaqData( attributes, innerBlocks ) {
+		if ( innerBlocks && innerBlocks.length > 0 ) {
+			return false;
+		}
+		var faqs = attributes && attributes.faqs;
+		if ( ! Array.isArray( faqs ) || faqs.length === 0 ) {
+			return false;
+		}
+		return faqs.some( function ( faq ) {
+			if ( ! faq || typeof faq !== 'object' ) {
+				return false;
+			}
+			var question = typeof faq.question === 'string' ? faq.question.trim() : '';
+			return question !== '' || legacyAnswerParagraphs( faq.answer ).length > 0;
+		} );
+	}
 
 	registerBlockType( 'cis/accessible-accordion-faq', {
 		edit: function ( props ) {
@@ -196,6 +275,75 @@
 		save: function () {
 			return el( InnerBlocks.Content );
 		},
+
+		deprecated: [
+			{
+				attributes: LEGACY_V1_ATTRIBUTES,
+
+				// Matches the v1 line, which was fully dynamic.
+				save: function () {
+					return null;
+				},
+
+				isEligible: function ( attributes, innerBlocks ) {
+					return hasLegacyFaqData( attributes, innerBlocks );
+				},
+
+				migrate: function ( attributes ) {
+					var items = [];
+
+					( attributes.faqs || [] ).forEach( function ( faq ) {
+						if ( ! faq || typeof faq !== 'object' ) {
+							return;
+						}
+
+						var question   = typeof faq.question === 'string' ? faq.question.trim() : '';
+						var paragraphs = legacyAnswerParagraphs( faq.answer );
+
+						// Nothing recoverable in this row — drop it rather than
+						// leaving an empty item behind.
+						if ( question === '' && paragraphs.length === 0 ) {
+							return;
+						}
+
+						// Keep a question whose answer went missing: an empty
+						// paragraph gives the editor something to type into,
+						// and losing the question would be worse.
+						if ( paragraphs.length === 0 ) {
+							paragraphs = [ '' ];
+						}
+
+						items.push( createBlock(
+							'cis/faq-item',
+							{ question: question },
+							paragraphs.map( function ( para ) {
+								return createBlock( 'core/paragraph', { content: para } );
+							} )
+						) );
+					} );
+
+					var level = parseInt( attributes.titleLevel, 10 );
+					if ( isNaN( level ) || level < 2 || level > 6 ) {
+						level = 2;
+					}
+
+					return [
+						{
+							title:        typeof attributes.title === 'string' ? attributes.title : '',
+							titleLevel:   level,
+							collapsible:  !! attributes.collapsible,
+							anchor:       typeof attributes.anchor === 'string' ? attributes.anchor : '',
+							// v1 had no schema toggle — it always emitted
+							// FAQPage JSON-LD. Preserve that, matching the
+							// v2.x legacy gate in render.php.
+							enableSchema: true,
+							blockVersion: BLOCK_VERSION,
+						},
+						items,
+					];
+				},
+			},
+		],
 	} );
 
 	// -----------------------------------------------------------------------

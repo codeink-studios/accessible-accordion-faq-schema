@@ -105,6 +105,48 @@ foreach ( $cis_aafs_inner_blocks as $cis_aafs_item ) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// 2b. Legacy v1.x rescue.
+//
+// v1.x stored every Q/A pair in a `faqs` array attribute with no child blocks.
+// v2.0.0 switched to InnerBlocks children and shipped no migration, so from v2
+// onward this data was never read and the block rendered nothing at all. The
+// data is still sitting in post_content, so recover it here rather than
+// requiring someone to open and re-save every affected post.
+//
+// Only runs when the modern path found nothing, so a working v2/v3 block can
+// never be overridden by a stale attribute.
+// ---------------------------------------------------------------------------
+
+$cis_aafs_legacy_html = '';
+if ( ! $cis_aafs_has_complete && isset( $attributes['faqs'] ) ) {
+	$cis_aafs_legacy_items = cis_aafs_normalize_legacy_faqs( $attributes['faqs'] );
+
+	if ( ! empty( $cis_aafs_legacy_items ) ) {
+		$cis_aafs_has_complete = true;
+		$cis_aafs_legacy_html  = cis_aafs_render_legacy_items( $cis_aafs_legacy_items, $cis_aafs_collapsible );
+
+		// v1 had no schema toggle — it always emitted FAQPage JSON-LD. Honour
+		// that, consistent with the blockVersion legacy gate above.
+		if ( $cis_aafs_block_version < 3 ) {
+			$cis_aafs_enable_schema = true;
+		}
+
+		if ( $cis_aafs_enable_schema ) {
+			foreach ( $cis_aafs_legacy_items as $cis_aafs_legacy_item ) {
+				$cis_aafs_schema_items[] = array(
+					'@type'          => 'Question',
+					'name'           => wp_strip_all_tags( $cis_aafs_legacy_item['question'] ),
+					'acceptedAnswer' => array(
+						'@type' => 'Answer',
+						'text'  => wp_strip_all_tags( implode( "\n\n", $cis_aafs_legacy_item['paragraphs'] ) ),
+					),
+				);
+			}
+		}
+	}
+}
+
 // Don't render the block at all if it has no complete Q/A pairs.
 if ( ! $cis_aafs_has_complete ) {
 	return '';
@@ -176,7 +218,15 @@ $cis_aafs_list_tag = $cis_aafs_collapsible ? 'div' : 'dl';
 	<?php endif; ?>
 
 	<<?php echo esc_attr( $cis_aafs_list_tag ); ?> class="cis_accordion__list">
-		<?php echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Rendered cis/faq-item children (escape at their boundaries). ?>
+		<?php
+		// Legacy rescue output when present, otherwise the rendered
+		// cis/faq-item children. Both escape at their own boundaries.
+		if ( '' !== $cis_aafs_legacy_html ) {
+			echo $cis_aafs_legacy_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses()/wp_kses_post() applied in cis_aafs_render_legacy_items().
+		} else {
+			echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Rendered cis/faq-item children (escape at their boundaries).
+		}
+		?>
 	</<?php echo esc_attr( $cis_aafs_list_tag ); ?>>
 
 	<?php if ( '' !== $cis_aafs_schema_json ) : ?>
